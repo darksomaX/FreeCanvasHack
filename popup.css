@@ -267,6 +267,34 @@ a { cursor: pointer; color: #e80031; }
 .toggle-switch input:checked + .slider { background-color: #00be10; }
 .toggle-switch input:checked + .slider:before { transform: translateX(20px); }
 
+/* ── Test Extension Button ─────────────────────────────────────────────────── */
+
+.test-extension-btn {
+    width: 100%;
+    padding: 10px;
+    background: #1a1a2e;
+    border: 1px solid #333;
+    border-radius: 10px;
+    color: #aaa;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all .2s ease;
+}
+
+.test-extension-btn:hover {
+    border-color: #00be10;
+    color: #00cf11;
+    background: #111827;
+}
+
+.test-extension-btn i { font-size: 14px; }
+
 /* ── Status Footer ────────────────────────────────────────────────────────── */
 
 .status-footer {

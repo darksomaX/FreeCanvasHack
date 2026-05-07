@@ -679,7 +679,11 @@
 
     <div class="monitor-section" style="display:flex;justify-content:space-between;align-items:center;">
         <h4 style="margin:0">Event Log</h4>
-        <button class="clear-btn" id="clearLog">Clear</button>
+        <div style="display:flex;gap:4px;">
+            <button class="clear-btn" onclick="exportAnswers()" title="Export answers">Export</button>
+            <button class="clear-btn" onclick="importAnswers()" title="Import answers">Import</button>
+            <button class="clear-btn" id="clearLog">Clear</button>
+        </div>
     </div>
 
     <div class="event-log" id="eventLog"></div>
@@ -863,8 +867,69 @@ if (guardActive) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-// QUIZ INTERACTION — Click answers, submit, get graded
+// QUIZ INTERACTION — Click answers, submit, get graded, save/load attempts
 // ═══════════════════════════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'canvashack_test_attempts';
+
+// Load previous attempts from localStorage
+function getAttempts() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch { return []; }
+}
+
+function saveAttempt(attempt) {
+    const attempts = getAttempts();
+    attempts.push(attempt);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(attempts));
+}
+
+// If we have previous attempts, auto-fill best answers on page load
+function autofillFromPreviousAttempts() {
+    const attempts = getAttempts();
+    if (attempts.length === 0) return;
+
+    // Find best-scoring answer for each question across all attempts
+    const bestAnswers = {};
+    for (const attempt of attempts) {
+        for (const [qId, answer] of Object.entries(attempt.answers)) {
+            if (!bestAnswers[qId] || answer.correct) {
+                bestAnswers[qId] = answer;
+            }
+        }
+    }
+
+    // Fill them in (simulates what quizanswers.js does)
+    document.querySelectorAll('.question').forEach(q => {
+        const qId = q.id.replace('question_', '');
+        const best = bestAnswers[qId];
+        if (!best) return;
+
+        const qType = q.querySelector('.question_type').textContent;
+
+        if (qType === 'multiple_choice_question' || qType === 'true_false_question') {
+            const radio = q.querySelector(`input[value="${best.value}"]`);
+            if (radio && best.correct) {
+                radio.checked = true;
+                radio.closest('.answer').classList.add('selected');
+            }
+        } else if (qType === 'multiple_answers_question') {
+            if (best.values && best.correct) {
+                best.values.forEach(v => {
+                    const cb = q.querySelector(`input[value="${v}"]`);
+                    if (cb) { cb.checked = true; cb.closest('.answer').classList.add('selected'); }
+                });
+            }
+        } else if (qType === 'short_answer_question' || qType === 'numerical_question') {
+            if (best.value && best.correct) {
+                const input = q.querySelector('input[type="text"], input[type="number"]');
+                if (input) input.value = best.value;
+            }
+        }
+    });
+
+    addLog('info', '📝', `Loaded ${attempts.length} previous attempt(s). Best answers pre-filled.`);
+}
 
 // Answer clicking
 document.querySelectorAll('.answer').forEach(answer => {
@@ -873,7 +938,6 @@ document.querySelectorAll('.answer').forEach(answer => {
         if (!input) return;
 
         if (input.type === 'radio') {
-            // Clear siblings
             const name = input.name;
             document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
                 r.closest('.answer').classList.remove('selected');
@@ -892,6 +956,7 @@ document.getElementById('submitBtn')?.addEventListener('click', function () {
     const questions = document.querySelectorAll('.question');
     let totalPoints = 0, earnedPoints = 0;
     let allAnswered = true;
+    const submissionAnswers = {};
 
     questions.forEach(q => {
         const qId = q.id.replace('question_', '');
@@ -909,26 +974,30 @@ document.getElementById('submitBtn')?.addEventListener('click', function () {
             if (!selected) { allAnswered = false; return; }
             userAnswer = selected.value;
             isCorrect = userAnswer === correctAnswer;
+            submissionAnswers[qId] = { value: userAnswer, correct: isCorrect, points: isCorrect ? points : 0, type: qType };
         } else if (qType === 'multiple_answers_question') {
             const checked = q.querySelectorAll('input[type="checkbox"]:checked');
             if (checked.length === 0) { allAnswered = false; return; }
             const selected = Array.from(checked).map(c => c.value).sort().join(',');
             isCorrect = selected === correctAnswer.split(',').sort().join(',');
+            submissionAnswers[qId] = { values: Array.from(checked).map(c => c.value), correct: isCorrect, points: isCorrect ? points : 0, type: qType };
         } else if (qType === 'short_answer_question') {
             const input = q.querySelector('input[type="text"]');
             if (!input || !input.value.trim()) { allAnswered = false; return; }
             const correct = correctAnswer.toLowerCase().trim();
             const user = input.value.toLowerCase().trim();
             isCorrect = user === correct || user.includes(correct);
+            submissionAnswers[qId] = { value: input.value.trim(), correct: isCorrect, points: isCorrect ? points : 0, type: qType };
         } else if (qType === 'numerical_question') {
             const input = q.querySelector('input[type="number"]');
             if (!input || !input.value.trim()) { allAnswered = false; return; }
             isCorrect = parseFloat(input.value) === parseFloat(correctAnswer);
+            submissionAnswers[qId] = { value: input.value.trim(), correct: isCorrect, points: isCorrect ? points : 0, type: qType };
         } else if (qType === 'essay_question') {
             const textarea = q.querySelector('textarea');
             if (!textarea || !textarea.value.trim()) { allAnswered = false; return; }
-            // Essay questions: always give credit if answered
             isCorrect = textarea.value.trim().length > 10;
+            submissionAnswers[qId] = { value: textarea.value.trim(), correct: isCorrect, points: isCorrect ? points : 0, type: qType };
         }
 
         // Show grading
@@ -938,16 +1007,15 @@ document.getElementById('submitBtn')?.addEventListener('click', function () {
         if (isCorrect) {
             earnedPoints += points;
             q.classList.add('correct');
-            gradeEl.textContent = `✓ Correct! +${points} pts`;
+            gradeEl.textContent = `Correct! +${points} pts`;
             gradeEl.className = 'grade-display show correct';
             pointHolder.classList.add('correct-answer');
         } else {
             q.classList.add('incorrect');
-            gradeEl.textContent = `✗ Incorrect. 0/${points} pts`;
+            gradeEl.textContent = `Incorrect. 0/${points} pts`;
             gradeEl.className = 'grade-display show incorrect';
             pointHolder.classList.add('incorrect-answer');
 
-            // Show correct answer for choice questions
             if (correctAnswer) {
                 q.querySelectorAll('.answer').forEach(a => {
                     if (a.dataset.value === correctAnswer || correctAnswer.split(',').includes(a.dataset.value)) {
@@ -965,25 +1033,117 @@ document.getElementById('submitBtn')?.addEventListener('click', function () {
         return;
     }
 
-    // Show score banner
+    // Save this attempt
+    const attempt = {
+        timestamp: new Date().toISOString(),
+        score: earnedPoints,
+        total: totalPoints,
+        answers: submissionAnswers
+    };
+    saveAttempt(attempt);
+
+    // Show score
     const banner = document.getElementById('scoreBanner');
     const pct = Math.round((earnedPoints / totalPoints) * 100);
     const letterGrade = pct >= 90 ? 'A' : pct >= 80 ? 'B' : pct >= 70 ? 'C' : pct >= 60 ? 'D' : 'F';
+    const attemptNum = getAttempts().length;
 
-    banner.textContent = `Score: ${earnedPoints}/${totalPoints} (${pct}%) — Grade: ${letterGrade}`;
+    banner.innerHTML = `Attempt ${attemptNum} — Score: ${earnedPoints}/${totalPoints} (${pct}%) — Grade: ${letterGrade}
+        <br><button onclick="retakeQuiz()" style="margin-top:8px;padding:8px 20px;background:#007fff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:700;">Retake Quiz</button>
+        <span style="font-size:12px;color:#888;margin-left:12px;">Previous answers will be pre-filled from your best attempt</span>`;
     banner.className = 'score-banner show ' + (pct >= 60 ? 'pass' : 'fail');
     banner.scrollIntoView({ behavior: 'smooth' });
 
     this.disabled = true;
     this.textContent = 'Submitted';
 
-    addLog('info', '📝', `Quiz submitted. Score: ${earnedPoints}/${totalPoints} (${pct}%)`);
+    addLog('info', '📝', `Attempt ${attemptNum} submitted. Score: ${earnedPoints}/${totalPoints} (${pct}%)`);
 
-    // Log to monitoring panel
     if (leaked > 0) {
-        addLog('leaked', '⚠️', `FLAG: Student had ${leaked} suspicious events during the quiz. Reported to instructor.`);
+        addLog('leaked', '⚠️', `FLAG: Student had ${leaked} suspicious events. Reported to instructor.`);
     }
 });
+
+// Retake — reset the quiz form but keep previous attempt data
+window.retakeQuiz = function () {
+    // Clear all selections and grading
+    document.querySelectorAll('.question').forEach(q => {
+        q.classList.remove('correct', 'incorrect');
+        q.querySelectorAll('input').forEach(i => { i.checked = false; });
+        q.querySelectorAll('.answer').forEach(a => {
+            a.classList.remove('selected', 'correct-answer', 'show-incorrect');
+        });
+        q.querySelectorAll('.grade-display').forEach(g => {
+            g.className = 'grade-display';
+            g.textContent = '';
+        });
+        q.querySelectorAll('.question_points_holder').forEach(p => {
+            p.classList.remove('correct-answer', 'incorrect-answer');
+        });
+        // Clear text inputs
+        const textInput = q.querySelector('input[type="text"], input[type="number"]');
+        if (textInput) textInput.value = '';
+        const textarea = q.querySelector('textarea');
+        if (textarea) textarea.value = '';
+    });
+
+    // Hide score banner
+    const banner = document.getElementById('scoreBanner');
+    banner.className = 'score-banner';
+    banner.innerHTML = '';
+
+    // Re-enable submit
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit Quiz';
+
+    // Auto-fill from previous best attempts
+    autofillFromPreviousAttempts();
+};
+
+// ── Export / Import answer history ───────────────────────────────────────
+
+window.exportAnswers = function () {
+    const attempts = getAttempts();
+    if (attempts.length === 0) { alert('No attempts to export.'); return; }
+    const blob = new Blob([JSON.stringify(attempts, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'canvashack-answers.json';
+    a.click();
+    URL.revokeObjectURL(url);
+    addLog('info', '📤', `Exported ${attempts.length} attempt(s) to canvashack-answers.json`);
+};
+
+window.importAnswers = function () {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = function () {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+                if (!Array.isArray(imported)) throw new Error('Invalid format');
+                const existing = getAttempts();
+                const merged = [...existing, ...imported];
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+                addLog('info', '📥', `Imported ${imported.length} attempt(s). Total: ${merged.length}`);
+                autofillFromPreviousAttempts();
+            } catch (err) {
+                alert('Invalid file: ' + err.message);
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+};
+
+// Auto-fill from previous attempts on load
+autofillFromPreviousAttempts();
 </script>
 
 </body>

@@ -65,11 +65,7 @@
                 "quizanswers.js",
                 "content.js",
                 "ai-answers.js",
-                "bar.html",
-                "style.css",
                 "test-page.html",
-                "icons/home.png",
-                "icons/reload.png",
                 "images/canvashack-thin.png"
             ],
             "matches": ["<all_urls>", "file:///*"],

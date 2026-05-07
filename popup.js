@@ -506,12 +506,24 @@ document.addEventListener('DOMContentLoaded', () => {
             headers['X-Title'] = 'CanvasHack';
         }
 
+        // Determine which model to use for testing.
+        // If the user selected a model from the dropdown, use that.
+        // Otherwise use the provider's first model (not a hardcoded OpenAI model
+        // which would 404 on OpenRouter/Groq/etc).
+        let testModel = getSelectedModel();
+        if (!testModel && currentProvider && PROVIDERS[currentProvider]?.models?.[0]) {
+            testModel = PROVIDERS[currentProvider].models[0].id;
+        }
+        if (!testModel) {
+            testModel = 'gpt-4o-mini'; // last resort fallback
+        }
+
         chrome.runtime.sendMessage({
             action: 'testApiKey',
             url: endpoint,
             headers: headers,
             body: {
-                model: model || 'gpt-4o-mini',
+                model: testModel,
                 messages: [{ role: 'user', content: 'Say "ok" in one word.' }],
                 max_tokens: 5
             }
@@ -609,6 +621,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     showUICheckbox?.addEventListener('change', () => {
         chrome.storage.local.set({ showInjectedUI: showUICheckbox.checked });
+    });
+
+    // ── Test Extension button ────────────────────────────────────────────────
+    // Opens the test page in a new tab so the user can verify all features work.
+
+    document.getElementById('testExtensionBtn')?.addEventListener('click', () => {
+        const testUrl = chrome.runtime.getURL('test-page.html');
+        chrome.tabs.create({ url: testUrl });
     });
 
     // ── Init ───────────────────────────────────────────────────────────────
