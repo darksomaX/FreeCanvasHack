@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!--
+  CanvasHack Test Page — mimics a Canvas quiz with full monitoring simulation.
+
+  HOW TO USE:
+  1. Load the CanvasHack extension in Chrome (chrome://extensions → Developer mode → Load unpacked)
+  2. Open this file: file:///path/to/canvashack/test-page.html
+  3. The right panel simulates what Canvas would report to a teacher
+  4. If Privacy Guard is working, all events should show "BLOCKED"
+  5. Click answers and submit to get a graded score
+-->
+
+<head>
+    <meta charset="UTF-8">
+    <title>Canvas Quiz — Midterm Exam (Test Page)</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+
+        body {
+            font-family: 'Lato', 'Helvetica Neue', Arial, sans-serif;
+            background: #f0f0f0;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ═══ LEFT: Quiz Area ═══ */
+        .quiz-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        /* Canvas top nav */
+        .ic-Layout-header {
+            background: #394b58;
+            color: #fff;
+            padding: 10px 24px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 14px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .ic-Layout-header a { color: #aac; text-decoration: none; }
+        .ic-Layout-header a:hover { text-decoration: underline; }
+        .ic-Layout-header .breadcrumb-sep { color: #667; margin: 0 4px; }
+
+        .quiz-content {
+            max-width: 820px;
+            margin: 20px auto;
+            padding: 0 24px 40px;
+        }
+
+        /* Quiz header */
+        .quiz-header {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px 24px;
+            margin-bottom: 16px;
+        }
+
+        .quiz-header h1 { font-size: 22px; margin: 0 0 6px; color: #2d3b45; }
+        .quiz-header .meta { margin: 0; color: #888; font-size: 14px; }
+
+        /* Info banner */
+        .info-banner {
+            background: #e8f4fd;
+            border: 1px solid #b3d8f0;
+            color: #1a5276;
+            padding: 12px 16px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        /* Question container */
+        .quiz-body {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 20px;
+        }
+
+        /* Individual question */
+        .question {
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 16px 18px;
+            margin-bottom: 18px;
+            background: #fafafa;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .question:hover { background: #f5f5f5; }
+
+        .question.correct { border-color: #27ae60; background: #eafaf1; }
+        .question.incorrect { border-color: #e74c3c; background: #fdedec; }
+
+        .question .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .question .question_points_holder {
+            font-size: 12px;
+            color: #888;
+            font-weight: 600;
+        }
+
+        .question_points_holder.correct-answer { color: #27ae60; font-weight: 700; }
+        .question_points_holder.incorrect-answer { color: #e74c3c; font-weight: 700; }
+
+        .question_type {
+            font-size: 11px;
+            color: #aaa;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .original_question_text { display: none; }
+
+        .question .text {
+            font-size: 15px;
+            margin-bottom: 12px;
+            color: #2d3b45;
+            line-height: 1.5;
+        }
+
+        /* Answer options */
+        .answers_wrapper { display: flex; flex-direction: column; gap: 6px; }
+
+        .answer {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .answer:hover { background: #f0f4ff; border-color: #bbb; }
+
+        .answer.selected { background: #e8f0fe; border-color: #4285f4; }
+
+        .answer.correct-answer {
+            background: #e8f8e8 !important;
+            border-color: #27ae60 !important;
+        }
+
+        .answer.show-incorrect {
+            background: #fde8e8 !important;
+            border-color: #e74c3c !important;
+        }
+
+        .answer input[type="radio"],
+        .answer input[type="checkbox"] {
+            margin: 0;
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+        }
+
+        .answer .answer_text { font-size: 14px; color: #333; }
+
+        /* Text/number inputs */
+        .question input[type="text"],
+        .question input[type="number"],
+        .question textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .question input:focus, .question textarea:focus { border-color: #4285f4; }
+        .question textarea { min-height: 80px; resize: vertical; }
+
+        /* Grade display per question */
+        .grade-display {
+            margin-top: 8px;
+            font-size: 13px;
+            font-weight: 700;
+            display: none;
+        }
+
+        .grade-display.show { display: block; }
+        .grade-display.correct { color: #27ae60; }
+        .grade-display.incorrect { color: #e74c3c; }
+
+        /* Submit area */
+        .submit-area {
+            text-align: center;
+            padding: 24px 0;
+        }
+
+        .btn-submit {
+            background: #007fff;
+            color: #fff;
+            border: none;
+            padding: 12px 40px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 700;
+            transition: background 0.2s;
+        }
+
+        .btn-submit:hover { background: #0066cc; }
+        .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
+
+        /* Score banner */
+        .score-banner {
+            display: none;
+            text-align: center;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .score-banner.show { display: block; }
+        .score-banner.pass { background: #eafaf1; color: #27ae60; border: 2px solid #27ae60; }
+        .score-banner.fail { background: #fdedec; color: #e74c3c; border: 2px solid #e74c3c; }
+
+        /* ═══ RIGHT: Monitoring Panel ═══ */
+        .monitor-panel {
+            width: 340px;
+            background: #1a1a2e;
+            color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            border-left: 2px solid #333;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+
+        .monitor-header {
+            padding: 14px 16px;
+            background: #0f0f1e;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .monitor-header h3 {
+            margin: 0;
+            font-size: 14px;
+            color: #e74c3c;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .monitor-header .monitor-status {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .monitor-status.secure { background: #0d3320; color: #27ae60; }
+        .monitor-status.exposed { background: #3d0d0d; color: #e74c3c; animation: pulse 1s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .monitor-section {
+            padding: 10px 16px;
+            border-bottom: 1px solid #2a2a3e;
+        }
+
+        .monitor-section h4 {
+            margin: 0 0 6px;
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .monitor-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+
+        .stat-box {
+            background: #12122a;
+            border: 1px solid #2a2a3e;
+            border-radius: 6px;
+            padding: 8px 10px;
+            text-align: center;
+        }
+
+        .stat-box .stat-value {
+            font-size: 20px;
+            font-weight: 700;
+            display: block;
+        }
+
+        .stat-box .stat-value.safe { color: #27ae60; }
+        .stat-box .stat-value.danger { color: #e74c3c; }
+        .stat-box .stat-label { font-size: 10px; color: #777; display: block; margin-top: 2px; }
+
+        /* Event log */
+        .event-log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 12px;
+        }
+
+        .event-log::-webkit-scrollbar { width: 4px; }
+        .event-log::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+
+        .log-entry {
+            padding: 5px 8px;
+            margin-bottom: 3px;
+            border-radius: 4px;
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            font-size: 11px;
+            line-height: 1.4;
+            animation: slideIn 0.15s ease;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .log-entry.blocked { background: #0d3320; color: #27ae60; }
+        .log-entry.leaked  { background: #3d0d0d; color: #e74c3c; }
+        .log-entry.info    { background: #1a1a3e; color: #6688cc; }
+
+        .log-entry .log-icon { flex-shrink: 0; width: 14px; text-align: center; }
+        .log-entry .log-time { color: #666; flex-shrink: 0; }
+        .log-entry .log-msg  { flex: 1; }
+
+        .clear-btn {
+            background: #222;
+            border: 1px solid #444;
+            color: #888;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .clear-btn:hover { background: #333; color: #fff; }
+    </style>
+</head>
+
+<body>
+
+<!-- ═══ LEFT: Quiz Area ═══ -->
+<div class="quiz-area">
+    <div class="ic-Layout-header">
+        <a href="#">Dashboard</a>
+        <span class="breadcrumb-sep">›</span>
+        <a href="#">CS 101 — Intro to Computer Science</a>
+        <span class="breadcrumb-sep">›</span>
+        <a href="#">Quizzes</a>
+        <span class="breadcrumb-sep">›</span>
+        <span style="color:#fff">Midterm Exam</span>
+    </div>
+
+    <div class="quiz-content">
+        <div class="info-banner">
+            <strong>CanvasHack Test Page</strong> — This simulates a real Canvas quiz. Answer questions and submit to get graded. The <b>right panel</b> shows what Canvas would report to your teacher. If Privacy Guard is working, events show <span style="color:#27ae60;font-weight:700">BLOCKED</span>.
+        </div>
+
+        <div class="quiz-header">
+            <h1>Midterm Exam — CS 101</h1>
+            <p class="meta">10 questions &middot; 30 points possible &middot; Time limit: 60 min</p>
+        </div>
+
+        <div class="score-banner" id="scoreBanner"></div>
+
+        <div class="quiz-body">
+
+            <!-- ═══ Q1: Multiple Choice ═══ -->
+            <div class="question" id="question_1001" data-answer="4262">
+                <div class="header">
+                    <span class="question_points_holder">3 pts</span>
+                    <span class="question_type">multiple_choice_question</span>
+                </div>
+                <span class="original_question_text">Question 1001</span>
+                <div class="text question_text">
+                    Which data structure uses a Last-In-First-Out (LIFO) ordering?
+                </div>
+                <div class="answers_wrapper">
+                    <label class="answer" data-value="4261">
+                        <input type="radio" name="question_1001" value="4261">
+                        <span class="answer_text">Queue</span>
+                    </label>
+                    <label class="answer" data-value="4262">
+                        <input type="radio" name="question_1001" value="4262">
+                        <span class="answer_text">Stack</span>
+                    </label>
+                    <label class="answer" data-value="4263">
+                        <input type="radio" name="question_1001" value="4263">
+                        <span class="answer_text">Linked List</span>
+                    </label>
+                    <label class="answer" data-value="4264">
+                        <input type="radio" name="question_1001" value="4264">
+                        <span class="answer_text">Binary Tree</span>
+                    </label>
+                </div>
+                <div class="grade-display" id="grade_1001"></div>
+            </div>
+
+            <!-- ═══ Q2: True/False ═══ -->
+            <div class="question" id="question_1002" data-answer="4272">
+                <div class="header">
+                    <span class="question_points_holder">2 pts</span>
+                    <span class="question_type">true_false_question</span>
+                </div>
+                <span class="original_question_text">Question 1002</span>
+                <div class="text question_text">
+                    TCP is a connectionless protocol.
+                </div>
+                <div class="answers_wrapper">
+                    <label class="answer" data-value="4271">
+                        <input type="radio" name="question_1002" value="4271">
+                        <span class="answer_text">True</span>
+                    </label>
+                    <label class="answer" data-value="4272">
+                        <input type="radio" name="question_1002" value="4272">
+                        <span class="answer_text">False</span>
+                    </label>
+                </div>
+                <div class="grade-display" id="grade_1002"></div>
+            </div>
+
+            <!-- ═══ Q3: Fill in the Blank ═══ -->
+            <div class="question" id="question_1003" data-answer="debugging">
+                <div class="header">
+                    <span class="question_points_holder">4 pts</span>
+                    <span class="question_type">short_answer_question</span>
+                </div>
+                <span class="original_question_text">Question 1003</span>
+                <div class="text question_text">
+                    The process of finding and fixing errors in a program is called ________.
+                </div>
+                <input type="text" name="question_1003" placeholder="Type your answer...">
+                <div class="grade-display" id="grade_1003"></div>
+            </div>
+
+            <!-- ═══ Q4: Multiple Choice ═══ -->
+            <div class="question" id="question_1004" data-answer="4283">
+                <div class="header">
+                    <span class="question_points_holder">3 pts</span>
+                    <span class="question_type">multiple_choice_question</span>
+                </div>
+                <span class="original_question_text">Question 1004</span>
+                <div class="text question_text">
+                    What is the time complexity of binary search on a sorted array of n elements?
+                </div>
+                <div class="answers_wrapper">
+                    <label class="answer" data-value="4281">
+                        <input type="radio" name="question_1004" value="4281">
+                        <span class="answer_text">O(n)</span>
+                    </label>
+                    <label class="answer" data-value="4282">
+                        <input type="radio" name="question_1004" value="4282">
+                        <span class="answer_text">O(n²)</span>
+                    </label>
+                    <label class="answer" data-value="4283">
+                        <input type="radio" name="question_1004" value="4283">
+                        <span class="answer_text">O(log n)</span>
+                    </label>
+                    <label class="answer" data-value="4284">
+                        <input type="radio" name="question_1004" value="4284">
+                        <span class="answer_text">O(1)</span>
+                    </label>
+                </div>
+                <div class="grade-display" id="grade_1004"></div>
+            </div>
+
+            <!-- ═══ Q5: Multiple Answers ═══ -->
+            <div class="question" id="question_1005" data-answer="4291,4292,4294">
+                <div class="header">
+                    <span class="question_points_holder">4 pts</span>
+                    <span class="question_type">multiple_answers_question</span>
+                </div>
+                <span class="original_question_text">Question 1005</span>
+                <div class="text question_text">
+                    Which of the following are valid HTTP methods? (Select all that apply)
+                </div>
+                <div class="answers_wrapper">
+                    <label class="answer" data-value="4291">
+                        <input type="checkbox" name="question_1005_answer_4291" value="4291">
+                        <span class="answer_text">GET</span>
+                    </label>
+                    <label class="answer" data-value="4292">
+                        <input type="checkbox" name="question_1005_answer_4292" value="4292">
+                        <span class="answer_text">POST</span>
+                    </label>
+                    <label class="answer" data-value="4293">
+                        <input type="checkbox" name="question_1005_answer_4293" value="4293">
+                        <span class="answer_text">FETCH</span>
+                    </label>
+                    <label class="answer" data-value="4294">
+                        <input type="checkbox" name="question_1005_answer_4294" value="4294">
+                        <span class="answer_text">DELETE</span>
+                    </label>
+                    <label class="answer" data-value="4295">
+                        <input type="checkbox" name="question_1005_answer_4295" value="4295">
+                        <span class="answer_text">SEND</span>
+                    </label>
+                </div>
+                <div class="grade-display" id="grade_1005"></div>
+            </div>
+
+            <!-- ═══ Q6: Numerical ═══ -->
+            <div class="question" id="question_1006" data-answer="8">
+                <div class="header">
+                    <span class="question_points_holder">3 pts</span>
+                    <span class="question_type">numerical_question</span>
+                </div>
+                <span class="original_question_text">Question 1006</span>
+                <div class="text question_text">
+                    How many bits are in a single byte?
+                </div>
+                <input type="number" name="question_1006" placeholder="Enter a number">
+                <div class="grade-display" id="grade_1006"></div>
+            </div>
+
+            <!-- ═══ Q7: Multiple Choice ═══ -->
+            <div class="question" id="question_1007" data-answer="4302">
+                <div class="header">
+                    <span class="question_points_holder">3 pts</span>
+                    <span class="question_type">multiple_choice_question</span>
+                </div>
+                <span class="original_question_text">Question 1007</span>
+                <div class="text question_text">
+                    In object-oriented programming, what is the term for creating a new class from an existing one?
+                </div>
+                <div class="answers_wrapper">
+                    <label class="answer" data-value="4301">
+                        <input type="radio" name="question_1007" value="4301">
+                        <span class="answer_text">Encapsulation</span>
+                    </label>
+                    <label class="answer" data-value="4302">
+                        <input type="radio" name="question_1007" value="4302">
+                        <span class="answer_text">Inheritance</span>
+                    </label>
+                    <label class="answer" data-value="4303">
+                        <input type="radio" name="question_1007" value="4303">
+                        <span class="answer_text">Polymorphism</span>
+                    </label>
+                    <label class="answer" data-value="4304">
+                        <input type="radio" name="question_1007" value="4304">
+                        <span class="answer_text">Abstraction</span>
+                    </label>
+                </div>
+                <div class="grade-display" id="grade_1007"></div>
+            </div>
+
+            <!-- ═══ Q8: Fill in the Blank ═══ -->
+            <div class="question" id="question_1008" data-answer="hyper text markup language">
+                <div class="header">
+                    <span class="question_points_holder">2 pts</span>
+                    <span class="question_type">short_answer_question</span>
+                </div>
+                <span class="original_question_text">Question 1008</span>
+                <div class="text question_text">
+                    What does HTML stand for?
+                </div>
+                <input type="text" name="question_1008" placeholder="Type your answer...">
+                <div class="grade-display" id="grade_1008"></div>
+            </div>
+
+            <!-- ═══ Q9: Multiple Choice ═══ -->
+            <div class="question" id="question_1009" data-answer="4312">
+                <div class="header">
+                    <span class="question_points_holder">3 pts</span>
+                    <span class="question_type">multiple_choice_question</span>
+                </div>
+                <span class="original_question_text">Question 1009</span>
+                <div class="text question_text">
+                    Which sorting algorithm has the best average-case time complexity?
+                </div>
+                <div class="answers_wrapper">
+                    <label class="answer" data-value="4311">
+                        <input type="radio" name="question_1009" value="4311">
+                        <span class="answer_text">Bubble Sort</span>
+                    </label>
+                    <label class="answer" data-value="4312">
+                        <input type="radio" name="question_1009" value="4312">
+                        <span class="answer_text">Merge Sort</span>
+                    </label>
+                    <label class="answer" data-value="4313">
+                        <input type="radio" name="question_1009" value="4313">
+                        <span class="answer_text">Selection Sort</span>
+                    </label>
+                    <label class="answer" data-value="4314">
+                        <input type="radio" name="question_1009" value="4314">
+                        <span class="answer_text">Insertion Sort</span>
+                    </label>
+                </div>
+                <div class="grade-display" id="grade_1009"></div>
+            </div>
+
+            <!-- ═══ Q10: Essay ═══ -->
+            <div class="question" id="question_1010" data-answer="">
+                <div class="header">
+                    <span class="question_points_holder">3 pts</span>
+                    <span class="question_type">essay_question</span>
+                </div>
+                <span class="original_question_text">Question 1010</span>
+                <div class="text question_text">
+                    Explain the difference between a process and a thread. Why is multithreading useful?
+                </div>
+                <textarea name="question_1010" placeholder="Type your answer..."></textarea>
+                <div class="grade-display" id="grade_1010"></div>
+            </div>
+
+        </div>
+
+        <div class="submit-area">
+            <button class="btn-submit" id="submitBtn">Submit Quiz</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ RIGHT: Monitoring Panel (simulates what Canvas reports to teacher) ═══ -->
+<div class="monitor-panel">
+    <div class="monitor-header">
+        <h3><i class="fa-solid fa-eye"></i> Teacher Activity Log</h3>
+        <span class="monitor-status secure" id="monitorStatus">SECURE</span>
+    </div>
+
+    <div class="monitor-section">
+        <h4>Detection Stats</h4>
+        <div class="monitor-stats">
+            <div class="stat-box">
+                <span class="stat-value safe" id="statBlocked">0</span>
+                <span class="stat-label">Blocked</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-value danger" id="statLeaked">0</span>
+                <span class="stat-label">Leaked</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-value" id="statTabs" style="color:#6688cc">0</span>
+                <span class="stat-label">Tab Switches</span>
+            </div>
+            <div class="stat-box">
+                <span class="stat-value" id="statBlurs" style="color:#6688cc">0</span>
+                <span class="stat-label">Window Blurs</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="monitor-section" style="display:flex;justify-content:space-between;align-items:center;">
+        <h4 style="margin:0">Event Log</h4>
+        <button class="clear-btn" id="clearLog">Clear</button>
+    </div>
+
+    <div class="event-log" id="eventLog"></div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// MONITORING SYSTEM — simulates what Canvas would detect and report.
+//
+// inject.js overrides addEventListener in the MAIN world, so our event
+// listeners would be silently blocked. To properly test the guard, we use
+// TWO detection methods:
+//
+// 1. POLLING via a hidden iframe — the iframe gets its own un-patched JS
+//    context. Its document.hidden / visibilityState reflect the REAL browser
+//    state. This lets us detect tab switches even when the guard blocks events.
+//
+// 2. DIRECT EVENT LISTENERS — these will be blocked by inject.js (good!).
+//    If they somehow fire, that means the guard is NOT working.
+//
+// The monitoring panel shows "BLOCKED" when the guard prevents detection,
+// and "LEAKED" when real tab switches are detectable.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const eventLog = document.getElementById('eventLog');
+const statBlocked = document.getElementById('statBlocked');
+const statLeaked = document.getElementById('statLeaked');
+const statTabs = document.getElementById('statTabs');
+const statBlurs = document.getElementById('statBlurs');
+const monitorStatus = document.getElementById('monitorStatus');
+
+let blocked = 0, leaked = 0, tabSwitches = 0, windowBlurs = 0;
+let lastRealState = { hidden: false, blurred: false };
+
+function getTime() {
+    return new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function addLog(type, icon, message) {
+    const entry = document.createElement('div');
+    entry.className = 'log-entry ' + type;
+    entry.innerHTML = `<span class="log-icon">${icon}</span><span class="log-time">${getTime()}</span><span class="log-msg">${message}</span>`;
+    eventLog.prepend(entry);
+    while (eventLog.children.length > 100) eventLog.lastChild.remove();
+
+    if (type === 'blocked') { blocked++; statBlocked.textContent = blocked; }
+    if (type === 'leaked')  { leaked++;  statLeaked.textContent = leaked; }
+    if (message.toLowerCase().includes('tab switch') || message.toLowerCase().includes('tab hidden')) {
+        tabSwitches++; statTabs.textContent = tabSwitches;
+    }
+    if (message.toLowerCase().includes('blur') || message.toLowerCase().includes('blurred') || message.toLowerCase().includes('lost focus')) {
+        windowBlurs++; statBlurs.textContent = windowBlurs;
+    }
+
+    if (leaked > 0) {
+        monitorStatus.textContent = 'EXPOSED';
+        monitorStatus.className = 'monitor-status exposed';
+    } else {
+        monitorStatus.textContent = 'SECURE';
+        monitorStatus.className = 'monitor-status secure';
+    }
+}
+
+document.getElementById('clearLog')?.addEventListener('click', () => {
+    eventLog.innerHTML = '';
+    blocked = leaked = tabSwitches = windowBlurs = 0;
+    statBlocked.textContent = statLeaked.textContent = statTabs.textContent = statBlurs.textContent = '0';
+    monitorStatus.textContent = 'SECURE';
+    monitorStatus.className = 'monitor-status secure';
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// METHOD 1: IFRAME POLLING — uses a real iframe's un-patched document
+// to detect the ACTUAL browser visibility state. This bypasses inject.js
+// because the iframe is cross-origin (about:blank) and has its own JS context.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const probeFrame = document.createElement('iframe');
+probeFrame.style.cssText = 'width:1px;height:1px;position:fixed;top:-100px;left:-100px;opacity:0;pointer-events:none;';
+document.body.appendChild(probeFrame);
+
+const probeDoc = probeFrame.contentDocument || probeFrame.contentWindow?.document;
+const probeWin = probeFrame.contentWindow;
+
+// Poll every 500ms — check REAL visibility state via the un-patched iframe
+setInterval(function () {
+    if (!probeDoc || !probeWin) return;
+
+    const realHidden = probeDoc.hidden;
+    const realVisState = probeDoc.visibilityState;
+    const realHasFocus = probeWin.document.hasFocus();
+
+    // Tab switched away
+    if (realHidden && !lastRealState.hidden) {
+        // Check if our document.hidden is ALSO true (meaning guard didn't override it)
+        const ourHidden = document.hidden;
+        const ourVis = document.visibilityState;
+
+        if (ourHidden || ourVis !== 'visible') {
+            // Guard did NOT override — real leak!
+            addLog('leaked', '🔴', `Tab switch DETECTED! Canvas sees hidden=true, visibilityState="${ourVis}". Student left the quiz.`);
+        } else {
+            // Guard overrode it — Canvas would see visible, but the REAL state is hidden
+            addLog('blocked', '🛡️', `Tab switch BLOCKED. Student left tab, but Canvas sees visible=false, visibilityState="visible".`);
+        }
+    }
+
+    // Tab switched back
+    if (!realHidden && lastRealState.hidden) {
+        addLog('blocked', '🛡️', 'Student returned to tab. Canvas never noticed the switch.');
+    }
+
+    // Window focus lost (using iframe's focus state as proxy)
+    if (!realHasFocus && lastRealState.blurred === false) {
+        const ourFocus = document.hasFocus();
+        if (!ourFocus) {
+            addLog('leaked', '🔴', `Window focus LOST! hasFocus()=false. Canvas knows student switched windows.`);
+        } else {
+            addLog('blocked', '🛡️', `Window blurred, but hasFocus()=true. Canvas doesn't know.`);
+        }
+        lastRealState.blurred = true;
+    }
+
+    if (realHasFocus && lastRealState.blurred) {
+        lastRealState.blurred = false;
+    }
+
+    lastRealState.hidden = realHidden;
+}, 500);
+
+// ═══════════════════════════════════════════════════════════════════════════
+// METHOD 2: DIRECT EVENT LISTENERS — these SHOULD be blocked by inject.js.
+// If they fire, the guard is NOT working.
+// We save original addEventListener before inject.js patches it (but
+// inject.js runs first, so these will be blocked — which is the point).
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Try to register event listeners — if inject.js is working, these are silently swallowed
+document.addEventListener('visibilitychange', function () {
+    addLog('leaked', '🔴', 'visibilitychange event LEAKED through! inject.js is NOT blocking events!');
+});
+
+window.addEventListener('blur', function () {
+    addLog('leaked', '🔴', 'blur event LEAKED through! inject.js is NOT blocking events!');
+});
+
+window.addEventListener('focus', function () {
+    addLog('leaked', '🟡', 'focus event LEAKED through! inject.js is NOT blocking events!');
+});
+
+document.addEventListener('mouseleave', function () {
+    addLog('leaked', '🔴', 'mouseleave LEAKED — student moved mouse away from page.');
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Key tracking (these are NOT in the blocked list — keyboard events should work)
+// ═══════════════════════════════════════════════════════════════════════════
+
+document.addEventListener('keydown', function (e) {
+    if (e.altKey && e.key === 'Tab') {
+        addLog('leaked', '🔴', 'Alt+Tab detected — student switched windows.');
+    }
+    if (e.ctrlKey && e.key === 'c') {
+        addLog('info', '📋', 'Copy (Ctrl+C) detected.');
+    }
+    if (e.ctrlKey && e.key === 'v') {
+        addLog('info', '📋', 'Paste (Ctrl+V) detected.');
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Start message
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Check if guard is active
+const guardActive = document.documentElement.dataset.chGuard === 'active';
+if (guardActive) {
+    addLog('blocked', '🛡️', 'CanvasHack Privacy Guard DETECTED on this page. Monitoring will show blocked vs leaked events.');
+} else {
+    addLog('leaked', '⚠️', 'CanvasHack Privacy Guard NOT detected! All events will leak to Canvas. Fix: 1) Go to chrome://extensions → CanvasHack → Details → Enable "Allow access to file URLs" 2) Reload extension 3) Reload this page');
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// QUIZ INTERACTION — Click answers, submit, get graded
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Answer clicking
+document.querySelectorAll('.answer').forEach(answer => {
+    answer.addEventListener('click', function () {
+        const input = this.querySelector('input');
+        if (!input) return;
+
+        if (input.type === 'radio') {
+            // Clear siblings
+            const name = input.name;
+            document.querySelectorAll(`input[name="${name}"]`).forEach(r => {
+                r.closest('.answer').classList.remove('selected');
+            });
+            input.checked = true;
+            this.classList.add('selected');
+        } else if (input.type === 'checkbox') {
+            input.checked = !input.checked;
+            this.classList.toggle('selected', input.checked);
+        }
+    });
+});
+
+// Submit quiz
+document.getElementById('submitBtn')?.addEventListener('click', function () {
+    const questions = document.querySelectorAll('.question');
+    let totalPoints = 0, earnedPoints = 0;
+    let allAnswered = true;
+
+    questions.forEach(q => {
+        const qId = q.id.replace('question_', '');
+        const correctAnswer = q.dataset.answer;
+        const qType = q.querySelector('.question_type').textContent;
+        const pointsText = q.querySelector('.question_points_holder').textContent;
+        const points = parseInt(pointsText);
+        totalPoints += points;
+
+        let userAnswer = '';
+        let isCorrect = false;
+
+        if (qType === 'multiple_choice_question' || qType === 'true_false_question') {
+            const selected = q.querySelector('input:checked');
+            if (!selected) { allAnswered = false; return; }
+            userAnswer = selected.value;
+            isCorrect = userAnswer === correctAnswer;
+        } else if (qType === 'multiple_answers_question') {
+            const checked = q.querySelectorAll('input[type="checkbox"]:checked');
+            if (checked.length === 0) { allAnswered = false; return; }
+            const selected = Array.from(checked).map(c => c.value).sort().join(',');
+            isCorrect = selected === correctAnswer.split(',').sort().join(',');
+        } else if (qType === 'short_answer_question') {
+            const input = q.querySelector('input[type="text"]');
+            if (!input || !input.value.trim()) { allAnswered = false; return; }
+            const correct = correctAnswer.toLowerCase().trim();
+            const user = input.value.toLowerCase().trim();
+            isCorrect = user === correct || user.includes(correct);
+        } else if (qType === 'numerical_question') {
+            const input = q.querySelector('input[type="number"]');
+            if (!input || !input.value.trim()) { allAnswered = false; return; }
+            isCorrect = parseFloat(input.value) === parseFloat(correctAnswer);
+        } else if (qType === 'essay_question') {
+            const textarea = q.querySelector('textarea');
+            if (!textarea || !textarea.value.trim()) { allAnswered = false; return; }
+            // Essay questions: always give credit if answered
+            isCorrect = textarea.value.trim().length > 10;
+        }
+
+        // Show grading
+        const gradeEl = document.getElementById('grade_' + qId);
+        const pointHolder = q.querySelector('.question_points_holder');
+
+        if (isCorrect) {
+            earnedPoints += points;
+            q.classList.add('correct');
+            gradeEl.textContent = `✓ Correct! +${points} pts`;
+            gradeEl.className = 'grade-display show correct';
+            pointHolder.classList.add('correct-answer');
+        } else {
+            q.classList.add('incorrect');
+            gradeEl.textContent = `✗ Incorrect. 0/${points} pts`;
+            gradeEl.className = 'grade-display show incorrect';
+            pointHolder.classList.add('incorrect-answer');
+
+            // Show correct answer for choice questions
+            if (correctAnswer) {
+                q.querySelectorAll('.answer').forEach(a => {
+                    if (a.dataset.value === correctAnswer || correctAnswer.split(',').includes(a.dataset.value)) {
+                        a.classList.add('correct-answer');
+                    } else if (a.classList.contains('selected')) {
+                        a.classList.add('show-incorrect');
+                    }
+                });
+            }
+        }
+    });
+
+    if (!allAnswered) {
+        alert('Please answer all questions before submitting.');
+        return;
+    }
+
+    // Show score banner
+    const banner = document.getElementById('scoreBanner');
+    const pct = Math.round((earnedPoints / totalPoints) * 100);
+    const letterGrade = pct >= 90 ? 'A' : pct >= 80 ? 'B' : pct >= 70 ? 'C' : pct >= 60 ? 'D' : 'F';
+
+    banner.textContent = `Score: ${earnedPoints}/${totalPoints} (${pct}%) — Grade: ${letterGrade}`;
+    banner.className = 'score-banner show ' + (pct >= 60 ? 'pass' : 'fail');
+    banner.scrollIntoView({ behavior: 'smooth' });
+
+    this.disabled = true;
+    this.textContent = 'Submitted';
+
+    addLog('info', '📝', `Quiz submitted. Score: ${earnedPoints}/${totalPoints} (${pct}%)`);
+
+    // Log to monitoring panel
+    if (leaked > 0) {
+        addLog('leaked', '⚠️', `FLAG: Student had ${leaked} suspicious events during the quiz. Reported to instructor.`);
+    }
+});
+</script>
+
+</body>
+</html>

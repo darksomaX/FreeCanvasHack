@@ -1,0 +1,79 @@
+{
+    "manifest_version": 3,
+    "name": "Canvas Hack",
+    "description": "Privacy protection and quiz tools for Canvas LMS. All features run locally.",
+    "version": "2.0.0",
+    "permissions": [
+        "activeTab",
+        "scripting",
+        "storage"
+    ],
+    "icons": {
+        "16": "icons/ch.png",
+        "48": "icons/ch.png",
+        "128": "icons/ch.png"
+    },
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon48.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        }
+    },
+    "host_permissions": [
+        "*://*/*",
+        "file:///*"
+    ],
+    "background": {
+        "service_worker": "background.js",
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": ["<all_urls>", "file:///*"],
+            "js": ["inject.js"],
+            "run_at": "document_start",
+            "all_frames": true,
+            "world": "MAIN"
+        },
+        {
+            "matches": ["<all_urls>", "file:///*"],
+            "js": ["content.js"],
+            "run_at": "document_start",
+            "all_frames": true
+        },
+        {
+            "matches": [
+                "*://*.instructure.com/courses/*/quizzes/*/take*",
+                "*://*.edu/courses/*/quizzes/*/take*",
+                "*://*.org/courses/*/quizzes/*/take*",
+                "*://*.instructure.com/courses/*/assignments/*",
+                "*://*.edu/courses/*/assignments/*",
+                "*://*.org/courses/*/assignments/*",
+                "file:///*test-page*"
+            ],
+            "js": ["quizanswers.js", "ai-answers.js"],
+            "run_at": "document_idle",
+            "all_frames": true
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "inject.js",
+                "quizanswers.js",
+                "content.js",
+                "ai-answers.js",
+                "bar.html",
+                "style.css",
+                "test-page.html",
+                "icons/home.png",
+                "icons/reload.png",
+                "images/canvashack-thin.png"
+            ],
+            "matches": ["<all_urls>", "file:///*"],
+            "use_dynamic_url": true
+        }
+    ]
+}

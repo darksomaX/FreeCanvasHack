@@ -1,0 +1,772 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   CanvasHack Popup Styles
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+/* ── Reset & Base ─────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    width: 480px;
+    height: 580px;
+    margin: 0;
+    padding: 0;
+    background-color: #0a0a0a;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: #fff;
+    overflow: hidden;
+}
+
+a { cursor: pointer; color: #e80031; }
+
+/* ── Top Bar ──────────────────────────────────────────────────────────────── */
+
+.top {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #0f0f0f;
+    border-bottom: 1px solid #1e1e1e;
+    z-index: 100;
+}
+
+.logo-img {
+    height: 36px;
+    width: auto;
+    user-select: none;
+}
+
+.top .top-icon {
+    position: absolute;
+    right: 24px;
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+}
+
+.top .top-icon.left { left: 24px; right: auto; }
+
+.top .top-icon i.icon {
+    position: relative;
+    font-size: 18px;
+    background-color: #151515;
+    border: 1px solid #2a2a2a;
+    padding: 10px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .2s ease;
+}
+
+.top .top-icon i.icon:hover {
+    background-color: #222;
+    border-color: #444;
+}
+
+.top .top-icon i.icon span {
+    opacity: 0;
+    transition: opacity .2s ease;
+    position: absolute;
+    bottom: -30px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    padding: 4px 10px;
+    border-radius: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+.top .top-icon i.icon:hover span { opacity: 1; }
+
+/* ── Dashboard (Page 1) ───────────────────────────────────────────────────── */
+
+.dashboard {
+    margin-top: 76px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 20px;
+    gap: 10px;
+    overflow-y: auto;
+    max-height: calc(100% - 76px);
+    scrollbar-width: thin;
+    scrollbar-color: #333 transparent;
+}
+
+.dashboard::-webkit-scrollbar { width: 6px; }
+.dashboard::-webkit-scrollbar-track { background: transparent; }
+.dashboard::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+/* Status row */
+.status-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 0 2px;
+}
+
+.status-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #00cf11;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-label i { font-size: 12px; }
+
+/* ── Feature Cards ────────────────────────────────────────────────────────── */
+
+.feature-card {
+    width: 100%;
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: all .2s ease;
+}
+
+.feature-card:hover {
+    border-color: #333;
+    background: #181818;
+}
+
+.feature-card.clickable {
+    cursor: pointer;
+}
+
+.feature-card.clickable:hover {
+    border-color: #00960c;
+}
+
+/* Card header: icon + title + toggle/arrow */
+.fc-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.fc-icon {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #00cf11;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 17px;
+}
+
+.fc-title {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+}
+
+.fc-title h2 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.fc-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: #222;
+    color: #888;
+    white-space: nowrap;
+}
+
+.fc-badge.active {
+    background: #0d3320;
+    color: #00cf11;
+}
+
+.fc-badge.standby {
+    background: #1a1a2e;
+    color: #5588cc;
+}
+
+.fc-arrow {
+    color: #555;
+    font-size: 14px;
+    margin-left: auto;
+    transition: color .2s ease;
+}
+
+.feature-card.clickable:hover .fc-arrow { color: #00cf11; }
+
+.fc-desc {
+    font-size: 12px;
+    line-height: 1.5;
+    color: #888;
+    margin: 0;
+}
+
+/* ── Toggle Switch ────────────────────────────────────────────────────────── */
+
+.toggle-switch {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+
+.toggle-switch .slider {
+    position: absolute;
+    cursor: pointer;
+    background-color: #2a2a2a;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border-radius: 24px;
+    transition: all .2s ease;
+}
+
+.toggle-switch .slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #111;
+    border-radius: 50%;
+    transition: all .2s ease;
+}
+
+.toggle-switch input:checked + .slider { background-color: #00be10; }
+.toggle-switch input:checked + .slider:before { transform: translateX(20px); }
+
+/* ── Status Footer ────────────────────────────────────────────────────────── */
+
+.status-footer {
+    width: 100%;
+    background: #111;
+    border: 1px solid #1a1a1a;
+    border-radius: 12px;
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 10px;
+}
+
+.sf-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #ccc;
+}
+
+.sf-icon { color: #00cf11; font-size: 14px; }
+
+.sf-ch {
+    color: #e80031;
+    font-weight: 800;
+    font-size: 12px;
+}
+
+.sf-on {
+    color: #00cf11;
+    font-weight: 700;
+}
+
+/* ── Pages ────────────────────────────────────────────────────────────────── */
+
+.page {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.page.one { display: flex; }
+
+.page-type {
+    position: fixed;
+    margin-top: 68px;
+    width: 100%;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    padding-left: 70px;
+    background-color: #0f0f0f;
+    border-bottom: 1px solid #1e1e1e;
+    z-index: 99;
+    color: #fff;
+    cursor: pointer;
+}
+
+.page-type:hover i {
+    background-color: #e80031;
+}
+
+.page-type i {
+    background-color: #1a1a1a;
+    border-radius: 50%;
+    padding: 8px 10px;
+    font-size: 18px;
+    transition: all .2s ease;
+}
+
+.page-type h6 {
+    margin-left: 16px;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+/* ── Settings Scroll Area ─────────────────────────────────────────────────── */
+
+.settings {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 120px;
+    height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0 20px 20px;
+    gap: 12px;
+}
+
+.settings::-webkit-scrollbar { width: 6px; }
+.settings::-webkit-scrollbar-track { background: transparent; }
+.settings::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+/* ── URL Blocker ──────────────────────────────────────────────────────────── */
+
+.url-blocker {
+    background: #141414;
+    border: 1px solid #222;
+    padding: 14px 16px;
+    width: 100%;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.url-blocker input {
+    border: 1px solid #333;
+    color: #fff;
+    background-color: #1a1a1a;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    outline: none;
+    padding: 8px 10px;
+    transition: border-color .2s ease;
+}
+
+.url-blocker input:focus { border-color: #00be10; }
+
+.url-blocker button {
+    border: none;
+    background-color: #222;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    padding: 8px;
+    color: #fff;
+    cursor: pointer;
+    transition: background .2s ease;
+    font-weight: 600;
+}
+
+.url-blocker button:hover { background-color: #333; }
+
+.url-item {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    margin: 3px 4px 3px 0;
+    background: #1e1e1e;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #ccc;
+}
+
+.url-item .remove-url {
+    margin-left: 8px;
+    color: #cf0000;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.url-item .remove-url:hover { color: #ff3333; }
+
+/* ── Feature Toggle Row (Settings page) ───────────────────────────────────── */
+
+.feature-toggle {
+    background: #141414;
+    border: 1px solid #222;
+    padding: 14px 16px;
+    width: 100%;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* ── Tooltips ─────────────────────────────────────────────────────────────── */
+
+.tooltip {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.info-icon {
+    font-size: 14px;
+    color: #666;
+    cursor: pointer;
+}
+
+.info-icon:hover { color: #aaa; }
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    opacity: 0;
+    width: 240px;
+    background: #222;
+    color: #ddd;
+    text-align: left;
+    padding: 8px 10px;
+    border-radius: 8px;
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 6px;
+    font-size: 11px;
+    line-height: 1.4;
+    z-index: 9999;
+    transition: opacity .2s ease;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    pointer-events: none;
+}
+
+.tooltip .info-icon:hover + .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* ── Get Help ─────────────────────────────────────────────────────────────── */
+
+.get-help {
+    background: #141414;
+    border: 1px solid #222;
+    padding: 12px 16px;
+    width: 100%;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.get-help p { font-size: 13px; margin: 0; color: #888; }
+.get-help a { margin-left: 4px; }
+
+/* ── AI Settings Page ─────────────────────────────────────────────────────── */
+
+.ai-settings { gap: 12px; }
+
+.ai-section {
+    background: #141414;
+    border: 1px solid #222;
+    padding: 14px 16px;
+    width: 100%;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.ai-section input[type="text"],
+.ai-section input[type="password"] {
+    border: 1px solid #333;
+    color: #fff;
+    background-color: #1a1a1a;
+    font-family: 'Inter', sans-serif;
+    border-radius: 8px;
+    font-size: 13px;
+    outline: none;
+    padding: 8px 10px;
+    transition: border-color .2s ease;
+}
+
+.ai-section input[type="text"]:focus,
+.ai-section input[type="password"]:focus {
+    border-color: #00be10;
+}
+
+.api-key-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.api-key-row input { flex: 1; }
+
+.api-key-row button {
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #888;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+
+.api-key-row button:hover { color: #fff; background: #333; }
+
+/* Mode buttons */
+.mode-buttons {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.mode-btn {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #888;
+    padding: 6px 14px;
+    font-size: 12px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+
+.mode-btn:hover { border-color: #555; color: #bbb; }
+
+.mode-btn.active {
+    background: #0d3320;
+    border-color: #00be10;
+    color: #00cf11;
+}
+
+.mode-desc {
+    font-size: 12px;
+    color: #777;
+    margin: 4px 0 0;
+    line-height: 1.4;
+}
+
+.setting-hint {
+    font-size: 11px;
+    color: #666;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.keybind-display {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+#currentKeybind {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: #0d3320;
+    border: 2px solid #00be10;
+    border-radius: 10px;
+    color: #00cf11;
+    font-size: 18px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+#keybindInput {
+    flex: 1;
+    text-align: center;
+    font-size: 14px;
+}
+
+/* Range slider */
+input[type="range"] {
+    width: 100%;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: #333;
+    border-radius: 3px;
+    outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #00be10;
+    cursor: pointer;
+}
+
+/* Buttons */
+.test-api-btn, .save-btn {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+
+.test-api-btn {
+    background: #1a1a2e;
+    color: #aaa;
+    border: 1px solid #333;
+}
+
+.test-api-btn:hover { border-color: #00be10; color: #00cf11; }
+
+.save-btn {
+    background: #00be10;
+    color: #fff;
+}
+
+.save-btn:hover { background: #00cf11; }
+
+#apiTestResult {
+    font-size: 13px;
+    margin: 0;
+    text-align: center;
+    padding: 4px;
+    color: #888;
+}
+
+/* ── Update Card ──────────────────────────────────────────────────────────── */
+
+.update-card {
+    background: #141414;
+    border: 1px solid #222;
+    border-radius: 12px;
+    padding: 16px 18px;
+    width: 100%;
+}
+
+.update-card h3 {
+    color: #00cf11;
+    font-size: 16px;
+    margin: 0 0 10px;
+}
+
+.update-card ul { padding-left: 18px; margin: 0; }
+
+.update-card li {
+    font-size: 13px;
+    line-height: 1.7;
+    color: #999;
+}
+
+/* ── Provider / Model selects ─────────────────────────────────────────────── */
+
+.provider-select-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.provider-select-row select,
+.model-select-row select {
+    flex: 1;
+    background: #1a1a1a;
+    border: 1px solid #333;
+    color: #fff;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    outline: none;
+    cursor: pointer;
+    transition: border-color .2s ease;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+}
+
+.provider-select-row select:focus,
+.model-select-row select:focus {
+    border-color: #00be10;
+}
+
+.provider-select-row select option,
+.model-select-row select option {
+    background: #1a1a1a;
+    color: #fff;
+}
+
+.detected-provider {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: #0d3320;
+    color: #00cf11;
+    white-space: nowrap;
+    display: none;
+}
+
+.detected-provider.show { display: inline-block; }
+
+.model-select-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ── Typography helpers ───────────────────────────────────────────────────── */
+
+h5 {
+    font-size: 14px;
+    margin: 0;
+    font-weight: 600;
+    color: #fff;
+}

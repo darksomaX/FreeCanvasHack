@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>CanvasHack</title>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="popup.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css"
+        onerror="this.onerror=null;this.href='https://use.fontawesome.com/releases/v6.7.2/css/all.css'">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <!-- ─── Top Bar ──────────────────────────────────────────────────────── -->
+    <div class="top">
+        <div class="top-icon left" id="updates_icon">
+            <i class="fa-solid fa-bell icon"><span>Updates</span></i>
+        </div>
+        <img src="./images/canvashack-thin.png" class="logo-img" draggable="false"
+            onerror="this.style.display='none'">
+        <div class="top-icon" id="settings_icon">
+            <i class="fa-solid fa-gear icon"><span>Settings</span></i>
+        </div>
+    </div>
+
+    <!-- ─── PAGE 1: Main Dashboard ───────────────────────────────────────── -->
+    <div class="page one" id="p1">
+
+        <div class="dashboard">
+            <!-- Status indicator -->
+            <div class="status-row">
+                <span class="status-label"><i class="fa-solid fa-circle-check"></i> All Systems Active</span>
+            </div>
+
+            <!-- Answer Saver -->
+            <div class="feature-card" id="feat-answersaver">
+                <div class="fc-header">
+                    <div class="fc-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+                    <div class="fc-title">
+                        <h2>Answer Saver</h2>
+                        <span class="fc-badge active" id="badge-as">Active</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggleAnswerSaver" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="fc-desc">
+                    Fetches your previous quiz submissions from the Canvas API, finds your highest-scoring
+                    answers, and auto-fills them when you hover over each question. Works with multiple choice,
+                    true/false, fill-in-the-blank, matching, numerical, and essay questions.
+                </p>
+            </div>
+
+            <!-- Privacy Guard -->
+            <div class="feature-card" id="feat-privacyguard">
+                <div class="fc-header">
+                    <div class="fc-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div class="fc-title">
+                        <h2>Privacy Guard</h2>
+                        <span class="fc-badge active" id="badge-pg">Active</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="togglePrivacyGuard" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="fc-desc">
+                    Overrides browser visibility and focus APIs so Canvas always thinks your tab is active and
+                    focused. Blocks focus, blur, visibilitychange, mouseleave, pagehide, freeze/resume and
+                    other tracking events from firing. Also intercepts dispatchEvent to block programmatic
+                    tracking.
+                </p>
+            </div>
+
+            <!-- Kiosk Spoof -->
+            <div class="feature-card" id="feat-kiosk">
+                <div class="fc-header">
+                    <div class="fc-icon"><i class="fa-solid fa-display"></i></div>
+                    <div class="fc-title">
+                        <h2>Kiosk Spoof</h2>
+                        <span class="fc-badge standby" id="badge-ks">Standby</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggleKiosk" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="fc-desc">
+                    Wraps the current page in an iframe with a fake Canvas Kiosk App top bar, making it look
+                    like you're running the locked-down kiosk browser. Activate on any quiz page using the
+                    kiosk toggle. Works independently of other features.
+                </p>
+            </div>
+
+            <!-- AI Answer Engine -->
+            <div class="feature-card clickable" id="feat-ai">
+                <div class="fc-header">
+                    <div class="fc-icon"><i class="fa-solid fa-robot"></i></div>
+                    <div class="fc-title">
+                        <h2>AI Answer Engine</h2>
+                        <span class="fc-badge" id="badge-ai">Tap to configure</span>
+                    </div>
+                    <i class="fa-solid fa-chevron-right fc-arrow"></i>
+                </div>
+                <p class="fc-desc">
+                    Connects to your own LLM API (OpenAI, Anthropic, Ollama, any OpenAI-compatible endpoint).
+                    Three modes: <b>Hover</b> highlights the correct answer, <b>Right-click</b> shows a
+                    floating answer box, <b>Keybind</b> auto-types the answer character by character.
+                    Click this card to set up.
+                </p>
+            </div>
+
+            <!-- Status footer -->
+            <div class="status-footer">
+                <div class="sf-item">
+                    <i class="fa-solid fa-shield-check sf-icon"></i>
+                    <span>Tab-Switching Blocker: <b class="sf-on">ON</b></span>
+                </div>
+                <div class="sf-item">
+                    <span class="sf-ch">[CH]</span>
+                    <span>Full Testing Security: <b class="sf-on">ON</b></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── PAGE 2: Settings ─────────────────────────────────────────────── -->
+    <div class="page two" id="p2" style="display:none;">
+        <div class="page-type" id="settings_back">
+            <i class="fa-solid fa-arrow-left"></i>
+            <h6>Settings</h6>
+        </div>
+        <div class="settings">
+            <!-- URL Blocker -->
+            <div class="url-blocker">
+                <div class="tooltip">
+                    <h5>Block URLs from Injection</h5>
+                    <i class="fas fa-info-circle info-icon"></i>
+                    <span class="tooltiptext">URLs added here will be skipped by CanvasHack. Do NOT include your
+                        school's Canvas URL. Separate with commas.</span>
+                </div>
+                <div id="urlContainer"></div>
+                <input type="text" id="urlInput"
+                    placeholder="Enter URLs separated by commas (ex. https://google.com)">
+                <button id="saveUrls">Save URLs</button>
+            </div>
+
+            <!-- Show Injected UI Toggle -->
+            <div class="feature-toggle">
+                <div class="tooltip">
+                    <h5>Show In-Canvas Toolbar</h5>
+                    <i class="fas fa-info-circle info-icon"></i>
+                    <span class="tooltiptext">Controls the small on-page toolbar injected on Canvas quiz pages.
+                        Your protection still runs in the background even if hidden.</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" id="showInjectedUICheckbox" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+
+            <div class="get-help">
+                <p>Questions or issues? <a href="https://discord.gg/CtpHA6XC2u"
+                        target="_blank">Join the Discord</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── PAGE 3: AI Settings ──────────────────────────────────────────── -->
+    <div class="page three" id="p3" style="display:none;">
+        <div class="page-type" id="ai_back">
+            <i class="fa-solid fa-arrow-left"></i>
+            <h6>AI Answer Settings</h6>
+        </div>
+        <div class="settings ai-settings">
+
+            <!-- Provider selection -->
+            <div class="ai-section">
+                <h5>Provider</h5>
+                <div class="provider-select-row">
+                    <select id="providerSelect">
+                        <option value="">— Auto-detect from key —</option>
+                        <option value="openai">OpenAI</option>
+                        <option value="google">Google Gemini</option>
+                        <option value="groq">Groq</option>
+                        <option value="openrouter">OpenRouter</option>
+                        <option value="huggingface">Hugging Face</option>
+                        <option value="together">Together AI</option>
+                        <option value="cohere">Cohere</option>
+                        <option value="mistral">Mistral AI</option>
+                        <option value="deepseek">DeepSeek</option>
+                        <option value="cloudflare">Cloudflare Workers AI</option>
+                        <option value="ollama">Ollama (local)</option>
+                        <option value="custom">Custom provider...</option>
+                    </select>
+                    <span class="detected-provider" id="detectedProvider"></span>
+                </div>
+            </div>
+
+            <!-- API Key (auto-detects provider from key format) -->
+            <div class="ai-section">
+                <h5>API Key</h5>
+                <p class="setting-hint" id="keyHint">Paste your key — the provider will be auto-detected from its format. Leave blank for Ollama.</p>
+                <div class="api-key-row">
+                    <input type="password" id="aiApiKeyInput" placeholder="Paste your API key here...">
+                    <button id="toggleApiKeyVisibility" title="Show/Hide"><i class="fa-solid fa-eye"></i></button>
+                </div>
+            </div>
+
+            <!-- Model selection (dropdown populated per-provider + custom input) -->
+            <div class="ai-section">
+                <h5>Model</h5>
+                <div class="model-select-row" id="modelSelectRow">
+                    <select id="modelSelect">
+                        <option value="">— Select a model —</option>
+                    </select>
+                </div>
+                <input type="text" id="customModelInput" placeholder="e.g. gpt-4o-mini" style="display:none;">
+            </div>
+
+            <!-- Custom endpoint (only shown for custom provider) -->
+            <div class="ai-section" id="customEndpointSection" style="display:none;">
+                <h5>Custom Endpoint URL</h5>
+                <p class="setting-hint">Must be an OpenAI-compatible chat completions endpoint.</p>
+                <input type="text" id="aiEndpointInput"
+                    placeholder="https://api.your-provider.com/v1/chat/completions">
+            </div>
+
+            <!-- Answer Mode -->
+            <div class="ai-section">
+                <h5>Answer Mode</h5>
+                <div class="mode-buttons">
+                    <button class="mode-btn" data-mode="off">Off</button>
+                    <button class="mode-btn" data-mode="hover">Hover Hint</button>
+                    <button class="mode-btn" data-mode="rightclick">Right-Click</button>
+                    <button class="mode-btn" data-mode="keybind">Keybind Type</button>
+                </div>
+                <p class="mode-desc" id="modeDesc">AI answer system is disabled.</p>
+            </div>
+
+            <!-- Keybind config -->
+            <div class="ai-section" id="keybindSection" style="display:none;">
+                <h5>Auto-Type Keybind</h5>
+                <p class="setting-hint">Press any key to set it as the trigger. When hovering a question and
+                    pressing this key, the AI answer will be auto-typed into the input field character by
+                    character.</p>
+                <div class="keybind-display">
+                    <span id="currentKeybind">y</span>
+                    <input type="text" id="keybindInput" maxlength="1" placeholder="Press a key">
+                </div>
+            </div>
+
+            <!-- Auto-type speed -->
+            <div class="ai-section" id="speedSection" style="display:none;">
+                <h5>Auto-Type Speed: <span id="speedValue">50</span>ms</h5>
+                <p class="setting-hint">Milliseconds between each character when auto-typing. Lower = faster.</p>
+                <input type="range" id="typeSpeedRange" min="10" max="200" value="50" step="10">
+            </div>
+
+            <button id="testApiBtn" class="test-api-btn">Test Connection</button>
+            <p id="apiTestResult"></p>
+
+            <button id="saveAiBtn" class="save-btn">Save AI Settings</button>
+        </div>
+    </div>
+
+    <!-- ─── PAGE 4: Updates ──────────────────────────────────────────────── -->
+    <div class="page four" id="p4" style="display:none;">
+        <div class="page-type" id="updates_back">
+            <i class="fa-solid fa-arrow-left"></i>
+            <h6>Updates</h6>
+        </div>
+        <div class="settings">
+            <div class="update-card">
+                <h3>v2.0.0 — Full Rewrite</h3>
+                <ul>
+                    <li>Removed all remote server connections — 100% local</li>
+                    <li>Added AI Answer Engine with hover, right-click, and auto-type modes</li>
+                    <li>Enhanced Privacy Guard: blocks mouseleave, freeze/resume, dispatchEvent</li>
+                    <li>Added on/off toggles for every feature</li>
+                    <li>Cleaned up and simplified the entire codebase</li>
+                    <li>Removed paywall — all features free and open source</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>
