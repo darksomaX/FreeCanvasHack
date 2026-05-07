@@ -1,87 +1,57 @@
-// background.js — CanvasHack service worker.
-// Handles: extension lifecycle, message passing, API test proxy.
-// No remote connections except proxying user's own LLM API test requests.
+// background.js — Service worker. Handles context menus, test API, badge.
 
-// ── Set defaults on install/startup ─────────────────────────────────────────
-
-chrome.runtime.onStartup.addListener(() => {
-  chrome.storage.local.set({
-    paid: true,
-    lifetimePaid: true,
-    saveCorrectAnswers: true,
-    privacyGuardEnabled: true,
-    injectQuizAnswers: true
-  });
-});
-
+// Context menu — test extension
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.local.set({
-    paid: true,
-    lifetimePaid: true,
-    saveCorrectAnswers: true,
-    privacyGuardEnabled: true,
-    injectQuizAnswers: true
+  chrome.contextMenus?.create?.({
+    id: 'ch-test',
+    title: 'Open CanvasHack Test Page',
+    contexts: ['browser_action']
   });
 });
 
-// ── Message handler ────────────────────────────────────────────────────────
-// Content scripts and popup send messages here. The only network request
-// this makes is proxying the "test API key" request to the user's chosen endpoint.
+chrome.contextMenus?.onClicked?.addListener?.((info) => {
+  if (info.menuItemId === 'ch-test') {
+    chrome.tabs.create({ url: chrome.runtime.getURL('test-page.html') });
+  }
+});
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+// Test API connection from popup
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.action !== 'testAPI') return false;
+
   (async () => {
     try {
-      switch (message.action) {
-
-        case 'reloadTab':
-          // Reload the tab that sent the message (used by kiosk bar)
-          if (sender.tab?.id) {
-            chrome.tabs.reload(sender.tab.id);
-            sendResponse({ ok: true });
-          } else {
-            sendResponse({ error: 'no tab' });
-          }
-          break;
-
-        case 'testApiKey':
-          // Proxy the API test through the service worker to avoid CORS
-          // restrictions in the popup. This sends a minimal chat request
-          // to whatever endpoint the user configured.
-          try {
-            const res = await fetch(message.url, {
-              method: 'POST',
-              headers: message.headers,
-              body: JSON.stringify(message.body)
-            });
-
-            // Try to parse JSON, but handle non-JSON responses gracefully
-            let data;
-            const text = await res.text();
-            try {
-              data = JSON.parse(text);
-            } catch {
-              data = { raw: text.substring(0, 200) };
-            }
-
-            if (res.ok) {
-              sendResponse({ ok: true, data });
-            } else {
-              // Surface the actual HTTP status and error details
-              const errMsg = data?.error?.message || data?.message || data?.detail
-                || `HTTP ${res.status}: ${text.substring(0, 100)}`;
-              sendResponse({ ok: false, error: errMsg, status: res.status });
-            }
-          } catch (err) {
-            sendResponse({ ok: false, error: err.message });
-          }
-          break;
-
-        default:
-          sendResponse({ error: 'unknown action' });
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + msg.key
+      };
+      // OpenRouter needs extra headers
+      if (msg.endpoint.includes('openrouter.ai')) {
+        headers['HTTP-Referer'] = chrome.runtime.getURL('popup.html');
+        headers['X-Title'] = 'CanvasHack';
       }
-    } catch (err) {
-      sendResponse({ error: err.message });
+
+      const res = await fetch(msg.endpoint, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: msg.model,
+          messages: [{ role: 'user', content: 'Say "ok" in one word.' }],
+          max_tokens: 10
+        })
+      });
+
+      const data = await res.json();
+      if (data.choices?.[0]) {
+        sendResponse({ ok: true, reply: data.choices[0].message.content });
+      } else if (data.error) {
+        sendResponse({ ok: false, error: data.error.message || JSON.stringify(data.error) });
+      } else {
+        sendResponse({ ok: false, error: 'Unexpected response: ' + JSON.stringify(data).slice(0, 200) });
+      }
+    } catch(e) {
+      sendResponse({ ok: false, error: e.message });
     }
   })();
-  return true; // keep message channel open for async response
+  return true; // async response
 });

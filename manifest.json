@@ -66,6 +66,7 @@
                 "content.js",
                 "ai-answers.js",
                 "test-page.html",
+                "test-page.js",
                 "images/canvashack-thin.png"
             ],
             "matches": ["<all_urls>", "file:///*"],

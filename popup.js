@@ -248,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const MODE_DESCRIPTIONS = {
         off:        'AI answer system is disabled.',
         hover:      'When you hover over a question, the AI highlights the correct answer with a green tint and shows the answer in a tooltip.',
-        rightclick: 'Right-click on any question to get the AI answer in a draggable floating box. Copy the answer to clipboard from there.',
+        rightclick: 'Right-click on any question to auto-fill the AI answer. For multiple choice, it selects the correct option. For text inputs, it auto-types the answer.',
         keybind:    'Hover over a question, then press your configured key (default: Y) to auto-type the AI answer character by character.'
     };
 
