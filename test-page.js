@@ -1,55 +1,35 @@
-// test-page.js — External script for test-page.html (avoids CSP inline-script blocks).
-// Contains: monitoring system, quiz interaction, grading, attempt history.
+// test-page.js — Monitoring system, quiz interaction, grading, auto-type test.
 
-// ═══════════════════════════════════════════════════════════════════════════
-// MONITORING SYSTEM — simulates what Canvas would detect and report.
-//
-// inject.js patches addEventListener at document_start in the MAIN world.
-// Since this script runs AFTER inject.js, our event listeners for blocked
-// types (blur, focus, visibilitychange, mouseleave) will be silently
-// swallowed by the patched addEventListener — which is exactly what we want.
-//
-// Detection strategy:
-// 1. EVENT LISTENER TEST — register listeners for blocked event types.
-//    If they fire, the guard is NOT working (LEAKED).
-//    If they never fire, the guard IS working (BLOCKED — expected).
-//
-// 2. PROPERTY OVERRIDE CHECK — periodically verify that inject.js has
-//    overridden document.hidden, document.visibilityState, and
-//    Document.prototype.hasFocus. If the overrides are in place, the guard
-//    is active. If they revert to native behavior, the guard is bypassed.
-//
-// 3. PASTE DETECTION — monitor paste events on text inputs. The guard
-//    does NOT block paste events (they're not in the blocked list), so
-//    pastes should still be detectable.
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══ MONITORING SYSTEM ════════════════════════════════════════════════════
+// Simulates what Canvas would detect. Event listeners for blocked types
+// will be silently swallowed by inject.js — proving the guard works.
 
-const eventLog = document.getElementById('eventLog');
-const statBlocked = document.getElementById('statBlocked');
-const statLeaked = document.getElementById('statLeaked');
-const statTabs = document.getElementById('statTabs');
-const statBlurs = document.getElementById('statBlurs');
-const monitorStatus = document.getElementById('monitorStatus');
+var eventLog = document.getElementById('eventLog');
+var statBlocked = document.getElementById('statBlocked');
+var statLeaked = document.getElementById('statLeaked');
+var statTabs = document.getElementById('statTabs');
+var statBlurs = document.getElementById('statBlurs');
+var monitorStatus = document.getElementById('monitorStatus');
 
-let blocked = 0, leaked = 0, tabSwitches = 0, windowBlurs = 0;
+var blocked = 0, leaked = 0, tabSwitches = 0, windowBlurs = 0;
 
 function getTime() {
     return new Date().toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function addLog(type, icon, message) {
-    const entry = document.createElement('div');
+    var entry = document.createElement('div');
     entry.className = 'log-entry ' + type;
-    entry.innerHTML = `<span class="log-icon">${icon}</span><span class="log-time">${getTime()}</span><span class="log-msg">${message}</span>`;
+    entry.innerHTML = '<span class="log-icon">' + icon + '</span><span class="log-time">' + getTime() + '</span><span class="log-msg">' + message + '</span>';
     eventLog.prepend(entry);
     while (eventLog.children.length > 100) eventLog.lastChild.remove();
 
     if (type === 'blocked') { blocked++; statBlocked.textContent = blocked; }
     if (type === 'leaked')  { leaked++;  statLeaked.textContent = leaked; }
-    if (message.toLowerCase().includes('tab switch') || message.toLowerCase().includes('tab hidden')) {
+    if (message.toLowerCase().indexOf('tab switch') !== -1 || message.toLowerCase().indexOf('tab hidden') !== -1) {
         tabSwitches++; statTabs.textContent = tabSwitches;
     }
-    if (message.toLowerCase().includes('blur') || message.toLowerCase().includes('blurred') || message.toLowerCase().includes('lost focus')) {
+    if (message.toLowerCase().indexOf('blur') !== -1 || message.toLowerCase().indexOf('lost focus') !== -1) {
         windowBlurs++; statBlurs.textContent = windowBlurs;
     }
 
@@ -62,7 +42,7 @@ function addLog(type, icon, message) {
     }
 }
 
-document.getElementById('clearLog')?.addEventListener('click', () => {
+document.getElementById('clearLog').addEventListener('click', function() {
     eventLog.innerHTML = '';
     blocked = leaked = tabSwitches = windowBlurs = 0;
     statBlocked.textContent = statLeaked.textContent = statTabs.textContent = statBlurs.textContent = '0';
@@ -70,171 +50,123 @@ document.getElementById('clearLog')?.addEventListener('click', () => {
     monitorStatus.className = 'monitor-status secure';
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// METHOD 1: DIRECT EVENT LISTENERS — these SHOULD be blocked by inject.js.
-// If they fire, the guard is NOT working.
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══ METHOD 1: EVENT LISTENERS ═══════════════════════════════════════════
+// These SHOULD be blocked by inject.js. If they fire, guard is broken.
 
-document.addEventListener('visibilitychange', function () {
-    addLog('leaked', '\uD83D\uDD34', 'visibilitychange event LEAKED through! inject.js is NOT blocking events!');
+document.addEventListener('visibilitychange', function() {
+    addLog('leaked', '\uD83D\uDD34', 'visibilitychange LEAKED! Guard NOT blocking events.');
+});
+window.addEventListener('blur', function() {
+    addLog('leaked', '\uD83D\uDD34', 'blur LEAKED! Guard NOT blocking events.');
+});
+window.addEventListener('focus', function() {
+    addLog('leaked', '\uD83D\uDFE1', 'focus LEAKED! Guard NOT blocking events.');
+});
+document.addEventListener('mouseleave', function() {
+    addLog('leaked', '\uD83D\uDD34', 'mouseleave LEAKED — mouse left page.');
+});
+document.addEventListener('paste', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        addLog('leaked', '\uD83D\uDD34', 'PASTE detected on ' + e.target.tagName.toLowerCase() + '!');
+    }
 });
 
-window.addEventListener('blur', function () {
-    addLog('leaked', '\uD83D\uDD34', 'blur event LEAKED through! inject.js is NOT blocking events!');
-});
+// ═══ METHOD 2: PROPERTY OVERRIDE CHECK ══════════════════════════════════
 
-window.addEventListener('focus', function () {
-    addLog('leaked', '\uD83D\uDFE1', 'focus event LEAKED through! inject.js is NOT blocking events!');
-});
+var lastGuardCheck = true;
+setInterval(function() {
+    var guardOn = document.documentElement.dataset.chGuard === 'active';
+    var hiddenOk = document.hidden === false;
+    var visOk = document.visibilityState === 'visible';
+    var focusOk = true;
+    try { focusOk = document.hasFocus(); } catch(e) {}
 
-document.addEventListener('mouseleave', function () {
-    addLog('leaked', '\uD83D\uDD34', 'mouseleave LEAKED \u2014 student moved mouse away from page.');
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// METHOD 2: PROPERTY OVERRIDE VERIFICATION — polls every 2 seconds to
-// verify inject.js's overrides are still in place.
-// ═══════════════════════════════════════════════════════════════════════════
-
-let lastGuardCheck = true;
-
-setInterval(function () {
-    const guardActive = document.documentElement.dataset.chGuard === 'active';
-    const hiddenOk = document.hidden === false;
-    const visOk = document.visibilityState === 'visible';
-    const focusOk = Document.prototype.hasFocus() === true;
-
-    const allOk = guardActive && hiddenOk && visOk && focusOk;
-
+    var allOk = guardOn && hiddenOk && visOk && focusOk;
     if (allOk && !lastGuardCheck) {
-        addLog('blocked', '\uD83D\uDEE1\uFE0F', 'Privacy Guard restored. All overrides active.');
+        addLog('blocked', '\uD83D\uDEE1\uFE0F', 'Privacy Guard restored.');
     } else if (!allOk && lastGuardCheck) {
-        if (!guardActive) {
-            addLog('leaked', '\uD83D\uDD34', 'Guard marker lost! document.documentElement.dataset.chGuard is not "active".');
-        }
-        if (!hiddenOk) {
-            addLog('leaked', '\uD83D\uDD34', 'document.hidden override lost! Canvas can detect tab visibility.');
-        }
-        if (!visOk) {
-            addLog('leaked', '\uD83D\uDD34', 'document.visibilityState override lost! Canvas sees "' + document.visibilityState + '".');
-        }
-        if (!focusOk) {
-            addLog('leaked', '\uD83D\uDD34', 'Document.hasFocus() override lost! Canvas can detect focus loss.');
-        }
+        if (!guardOn) addLog('leaked', '\uD83D\uDD34', 'Guard marker lost!');
+        if (!hiddenOk) addLog('leaked', '\uD83D\uDD34', 'document.hidden override lost!');
+        if (!visOk) addLog('leaked', '\uD83D\uDD34', 'visibilityState override lost! Sees: "' + document.visibilityState + '"');
+        if (!focusOk) addLog('leaked', '\uD83D\uDD34', 'hasFocus() override lost!');
     }
     lastGuardCheck = allOk;
 }, 2000);
 
-// ═══════════════════════════════════════════════════════════════════════════
-// METHOD 3: PASTE DETECTION — paste events ARE now blocked by inject.js.
-// If this fires, it means the guard is not intercepting paste events.
-// ═══════════════════════════════════════════════════════════════════════════
-
-document.addEventListener('paste', function (e) {
-    const target = e.target;
-    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
-        addLog('leaked', '\uD83D\uDD34', 'PASTE detected on ' + target.tagName.toLowerCase() + ' field! Canvas can see pasted content.');
-    }
+// Keyboard tracking (not blocked by guard)
+document.addEventListener('keydown', function(e) {
+    if (e.altKey && e.key === 'Tab') addLog('leaked', '\uD83D\uDD34', 'Alt+Tab detected.');
+    if (e.ctrlKey && e.key === 'c') addLog('info', '\uD83D\uDCCB', 'Ctrl+C detected.');
+    if (e.ctrlKey && e.key === 'v') addLog('info', '\uD83D\uDCCB', 'Ctrl+V detected.');
 });
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Key tracking (keyboard events are NOT in the blocked list)
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══ STARTUP CHECK ═══════════════════════════════════════════════════════
 
-document.addEventListener('keydown', function (e) {
-    if (e.altKey && e.key === 'Tab') {
-        addLog('leaked', '\uD83D\uDD34', 'Alt+Tab detected \u2014 student switched windows.');
-    }
-    if (e.ctrlKey && e.key === 'c') {
-        addLog('info', '\uD83D\uDCCB', 'Copy (Ctrl+C) detected.');
-    }
-    if (e.ctrlKey && e.key === 'v') {
-        addLog('info', '\uD83D\uDCCB', 'Paste (Ctrl+V) detected.');
-    }
-});
-
-// ═══════════════════════════════════════════════════════════════════════════
-// Start message
-// ═══════════════════════════════════════════════════════════════════════════
-
-const guardActive = document.documentElement.dataset.chGuard === 'active';
+var guardActive = document.documentElement.dataset.chGuard === 'active';
 if (guardActive) {
-    addLog('blocked', '\uD83D\uDEE1\uFE0F', 'CanvasHack Privacy Guard DETECTED on this page. Monitoring will show blocked vs leaked events.');
-    addLog('blocked', '\uD83D\uDEE1\uFE0F', 'document.hidden = ' + document.hidden + ', visibilityState = "' + document.visibilityState + '", hasFocus = ' + Document.prototype.hasFocus());
+    addLog('blocked', '\uD83D\uDEE1\uFE0F', 'Privacy Guard DETECTED. Events will show BLOCKED vs LEAKED.');
+    var hf; try { hf = document.hasFocus(); } catch(e) { hf = 'N/A'; }
+    addLog('blocked', '\uD83D\uDEE1\uFE0F', 'hidden=' + document.hidden + ', vis="' + document.visibilityState + '", focus=' + hf);
 } else {
-    addLog('leaked', '\u26A0\uFE0F', 'CanvasHack Privacy Guard NOT detected! All events will leak to Canvas. Fix: 1) Go to chrome://extensions \u2192 CanvasHack \u2192 Details \u2192 Enable "Allow access to file URLs" 2) Reload extension 3) Reload this page');
+    addLog('leaked', '\u26A0\uFE0F', 'Guard NOT detected. Events will leak. Open via file:// with extension loaded.');
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// QUIZ INTERACTION \u2014 Click answers, submit, get graded, save/load attempts
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══ QUIZ INTERACTION ═══════════════════════════════════════════════════
 
-const STORAGE_KEY = 'canvashack_test_attempts';
+var STORAGE_KEY = 'canvashack_test_attempts';
 
 function getAttempts() {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch { return []; }
+    catch(e) { return []; }
 }
 
 function saveAttempt(attempt) {
-    const attempts = getAttempts();
+    var attempts = getAttempts();
     attempts.push(attempt);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(attempts));
 }
 
 function autofillFromPreviousAttempts() {
-    const attempts = getAttempts();
+    var attempts = getAttempts();
     if (attempts.length === 0) return;
 
-    const bestAnswers = {};
-    for (const attempt of attempts) {
-        for (const [qId, answer] of Object.entries(attempt.answers)) {
-            if (!bestAnswers[qId] || answer.correct) {
-                bestAnswers[qId] = answer;
-            }
+    var bestAnswers = {};
+    for (var i = 0; i < attempts.length; i++) {
+        var a = attempts[i];
+        for (var qId in a.answers) {
+            if (!bestAnswers[qId] || a.answers[qId].correct) bestAnswers[qId] = a.answers[qId];
         }
     }
 
-    document.querySelectorAll('.question').forEach(q => {
-        const qId = q.id.replace('question_', '');
-        const best = bestAnswers[qId];
-        if (!best) return;
-
-        const qType = q.querySelector('.question_type').textContent;
+    document.querySelectorAll('.question').forEach(function(q) {
+        var id = q.id.replace('question_', '');
+        var best = bestAnswers[id];
+        if (!best || !best.correct) return;
+        var qType = q.querySelector('.question_type').textContent;
 
         if (qType === 'multiple_choice_question' || qType === 'true_false_question') {
-            const radio = q.querySelector('input[value="' + best.value + '"]');
-            if (radio && best.correct) {
-                radio.checked = true;
-                radio.closest('.answer').classList.add('selected');
-            }
-        } else if (qType === 'multiple_answers_question') {
-            if (best.values && best.correct) {
-                best.values.forEach(v => {
-                    const cb = q.querySelector('input[value="' + v + '"]');
-                    if (cb) { cb.checked = true; cb.closest('.answer').classList.add('selected'); }
-                });
-            }
+            var radio = q.querySelector('input[value="' + best.value + '"]');
+            if (radio) { radio.checked = true; radio.closest('.answer').classList.add('selected'); }
+        } else if (qType === 'multiple_answers_question' && best.values) {
+            best.values.forEach(function(v) {
+                var cb = q.querySelector('input[value="' + v + '"]');
+                if (cb) { cb.checked = true; cb.closest('.answer').classList.add('selected'); }
+            });
         } else if (qType === 'short_answer_question' || qType === 'numerical_question') {
-            if (best.value && best.correct) {
-                const input = q.querySelector('input[type="text"], input[type="number"]');
-                if (input) input.value = best.value;
-            }
+            var inp = q.querySelector('input[type="text"], input[type="number"]');
+            if (inp && best.value) inp.value = best.value;
         }
     });
-
-    addLog('info', '\uD83D\uDCDD', 'Loaded ' + attempts.length + ' previous attempt(s). Best answers pre-filled.');
+    addLog('info', '\uD83D\uDCDD', 'Loaded ' + attempts.length + ' previous attempt(s).');
 }
 
 // Answer clicking
-document.querySelectorAll('.answer').forEach(answer => {
-    answer.addEventListener('click', function () {
-        const input = this.querySelector('input');
+document.querySelectorAll('.answer').forEach(function(answer) {
+    answer.addEventListener('click', function() {
+        var input = this.querySelector('input');
         if (!input) return;
-
         if (input.type === 'radio') {
-            const name = input.name;
-            document.querySelectorAll('input[name="' + name + '"]').forEach(r => {
+            document.querySelectorAll('input[name="' + input.name + '"]').forEach(function(r) {
                 r.closest('.answer').classList.remove('selected');
             });
             input.checked = true;
@@ -247,184 +179,134 @@ document.querySelectorAll('.answer').forEach(answer => {
 });
 
 // Submit quiz
-document.getElementById('submitBtn')?.addEventListener('click', function () {
-    const questions = document.querySelectorAll('.question');
-    let totalPoints = 0, earnedPoints = 0;
-    let allAnswered = true;
-    const submissionAnswers = {};
+document.getElementById('submitBtn').addEventListener('click', function() {
+    var questions = document.querySelectorAll('.question');
+    var totalPoints = 0, earnedPoints = 0;
+    var allAnswered = true;
+    var submissionAnswers = {};
 
-    questions.forEach(q => {
-        const qId = q.id.replace('question_', '');
-        const correctAnswer = q.dataset.answer;
-        const qType = q.querySelector('.question_type').textContent;
-        const pointsText = q.querySelector('.question_points_holder').textContent;
-        const points = parseInt(pointsText);
+    questions.forEach(function(q) {
+        var qId = q.id.replace('question_', '');
+        var correctAnswer = q.dataset.answer;
+        var qType = q.querySelector('.question_type').textContent;
+        var points = parseInt(q.querySelector('.question_points_holder').textContent);
         totalPoints += points;
-
-        let isCorrect = false;
+        var isCorrect = false;
 
         if (qType === 'multiple_choice_question' || qType === 'true_false_question') {
-            const selected = q.querySelector('input:checked');
-            if (!selected) { allAnswered = false; return; }
-            isCorrect = selected.value === correctAnswer;
-            submissionAnswers[qId] = { value: selected.value, correct: isCorrect, points: isCorrect ? points : 0, type: qType };
+            var sel = q.querySelector('input:checked');
+            if (!sel) { allAnswered = false; return; }
+            isCorrect = sel.value === correctAnswer;
+            submissionAnswers[qId] = { value: sel.value, correct: isCorrect, points: isCorrect ? points : 0, type: qType };
         } else if (qType === 'multiple_answers_question') {
-            const checked = q.querySelectorAll('input[type="checkbox"]:checked');
+            var checked = q.querySelectorAll('input[type="checkbox"]:checked');
             if (checked.length === 0) { allAnswered = false; return; }
-            const selected = Array.from(checked).map(c => c.value).sort().join(',');
-            isCorrect = selected === correctAnswer.split(',').sort().join(',');
-            submissionAnswers[qId] = { values: Array.from(checked).map(c => c.value), correct: isCorrect, points: isCorrect ? points : 0, type: qType };
+            var selVals = Array.from(checked).map(function(c) { return c.value; }).sort().join(',');
+            isCorrect = selVals === correctAnswer.split(',').sort().join(',');
+            submissionAnswers[qId] = { values: Array.from(checked).map(function(c) { return c.value; }), correct: isCorrect, points: isCorrect ? points : 0, type: qType };
         } else if (qType === 'short_answer_question') {
-            const input = q.querySelector('input[type="text"]');
-            if (!input || !input.value.trim()) { allAnswered = false; return; }
-            const correct = correctAnswer.toLowerCase().trim();
-            const user = input.value.toLowerCase().trim();
-            isCorrect = user === correct || user.includes(correct);
-            submissionAnswers[qId] = { value: input.value.trim(), correct: isCorrect, points: isCorrect ? points : 0, type: qType };
+            var inp = q.querySelector('input[type="text"]');
+            if (!inp || !inp.value.trim()) { allAnswered = false; return; }
+            isCorrect = inp.value.toLowerCase().trim().indexOf(correctAnswer.toLowerCase().trim()) !== -1;
+            submissionAnswers[qId] = { value: inp.value.trim(), correct: isCorrect, points: isCorrect ? points : 0, type: qType };
         } else if (qType === 'numerical_question') {
-            const input = q.querySelector('input[type="number"]');
-            if (!input || !input.value.trim()) { allAnswered = false; return; }
-            isCorrect = parseFloat(input.value) === parseFloat(correctAnswer);
-            submissionAnswers[qId] = { value: input.value.trim(), correct: isCorrect, points: isCorrect ? points : 0, type: qType };
+            var inp2 = q.querySelector('input[type="number"]');
+            if (!inp2 || !inp2.value.trim()) { allAnswered = false; return; }
+            isCorrect = parseFloat(inp2.value) === parseFloat(correctAnswer);
+            submissionAnswers[qId] = { value: inp2.value.trim(), correct: isCorrect, points: isCorrect ? points : 0, type: qType };
         } else if (qType === 'essay_question') {
-            const textarea = q.querySelector('textarea');
-            if (!textarea || !textarea.value.trim()) { allAnswered = false; return; }
-            isCorrect = textarea.value.trim().length > 10;
-            submissionAnswers[qId] = { value: textarea.value.trim(), correct: isCorrect, points: isCorrect ? points : 0, type: qType };
+            var ta = q.querySelector('textarea');
+            if (!ta || !ta.value.trim()) { allAnswered = false; return; }
+            isCorrect = ta.value.trim().length > 10;
+            submissionAnswers[qId] = { value: ta.value.trim(), correct: isCorrect, points: isCorrect ? points : 0, type: qType };
         }
 
-        const gradeEl = document.getElementById('grade_' + qId);
-        const pointHolder = q.querySelector('.question_points_holder');
-
+        var gradeEl = document.getElementById('grade_' + qId);
+        var ph = q.querySelector('.question_points_holder');
         if (isCorrect) {
             earnedPoints += points;
             q.classList.add('correct');
             gradeEl.textContent = 'Correct! +' + points + ' pts';
             gradeEl.className = 'grade-display show correct';
-            pointHolder.classList.add('correct-answer');
+            ph.classList.add('correct-answer');
         } else {
             q.classList.add('incorrect');
             gradeEl.textContent = 'Incorrect. 0/' + points + ' pts';
             gradeEl.className = 'grade-display show incorrect';
-            pointHolder.classList.add('incorrect-answer');
-
+            ph.classList.add('incorrect-answer');
             if (correctAnswer) {
-                q.querySelectorAll('.answer').forEach(a => {
-                    if (a.dataset.value === correctAnswer || correctAnswer.split(',').includes(a.dataset.value)) {
-                        a.classList.add('correct-answer');
-                    } else if (a.classList.contains('selected')) {
-                        a.classList.add('show-incorrect');
-                    }
+                q.querySelectorAll('.answer').forEach(function(a) {
+                    if (a.dataset.value === correctAnswer || correctAnswer.split(',').indexOf(a.dataset.value) !== -1) a.classList.add('correct-answer');
+                    else if (a.classList.contains('selected')) a.classList.add('show-incorrect');
                 });
             }
         }
     });
 
-    if (!allAnswered) {
-        alert('Please answer all questions before submitting.');
-        return;
-    }
+    if (!allAnswered) { alert('Answer all questions first.'); return; }
 
-    const attempt = {
-        timestamp: new Date().toISOString(),
-        score: earnedPoints,
-        total: totalPoints,
-        answers: submissionAnswers
-    };
+    var attempt = { timestamp: new Date().toISOString(), score: earnedPoints, total: totalPoints, answers: submissionAnswers };
     saveAttempt(attempt);
 
-    const banner = document.getElementById('scoreBanner');
-    const pct = Math.round((earnedPoints / totalPoints) * 100);
-    const letterGrade = pct >= 90 ? 'A' : pct >= 80 ? 'B' : pct >= 70 ? 'C' : pct >= 60 ? 'D' : 'F';
-    const attemptNum = getAttempts().length;
-
-    banner.innerHTML = 'Attempt ' + attemptNum + ' \u2014 Score: ' + earnedPoints + '/' + totalPoints + ' (' + pct + '%) \u2014 Grade: ' + letterGrade +
-        '<br><button id="retakeBtn" style="margin-top:8px;padding:8px 20px;background:#007fff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:700;">Retake Quiz</button>' +
-        '<span style="font-size:12px;color:#888;margin-left:12px;">Previous answers will be pre-filled from your best attempt</span>';
+    var banner = document.getElementById('scoreBanner');
+    var pct = Math.round((earnedPoints / totalPoints) * 100);
+    var letter = pct >= 90 ? 'A' : pct >= 80 ? 'B' : pct >= 70 ? 'C' : pct >= 60 ? 'D' : 'F';
+    var num = getAttempts().length;
+    banner.innerHTML = 'Attempt ' + num + ' \u2014 Score: ' + earnedPoints + '/' + totalPoints + ' (' + pct + '%) \u2014 Grade: ' + letter +
+        '<br><button id="retakeBtn" style="margin-top:8px;padding:8px 20px;background:#007fff;color:#fff;border:none;border-radius:4px;cursor:pointer;font-weight:700;">Retake Quiz</button>';
     banner.className = 'score-banner show ' + (pct >= 60 ? 'pass' : 'fail');
     banner.scrollIntoView({ behavior: 'smooth' });
-
-    // Attach retake handler (no inline onclick needed)
-    document.getElementById('retakeBtn')?.addEventListener('click', retakeQuiz);
-
+    document.getElementById('retakeBtn').addEventListener('click', retakeQuiz);
     this.disabled = true;
     this.textContent = 'Submitted';
-
-    addLog('info', '\uD83D\uDCDD', 'Attempt ' + attemptNum + ' submitted. Score: ' + earnedPoints + '/' + totalPoints + ' (' + pct + '%)');
-
-    if (leaked > 0) {
-        addLog('leaked', '\u26A0\uFE0F', 'FLAG: Student had ' + leaked + ' suspicious events. Reported to instructor.');
-    }
+    addLog('info', '\uD83D\uDCDD', 'Attempt ' + num + ': ' + earnedPoints + '/' + totalPoints + ' (' + pct + '%)');
+    if (leaked > 0) addLog('leaked', '\u26A0\uFE0F', 'FLAG: ' + leaked + ' suspicious events reported.');
 });
 
-// Retake
 function retakeQuiz() {
-    document.querySelectorAll('.question').forEach(q => {
+    document.querySelectorAll('.question').forEach(function(q) {
         q.classList.remove('correct', 'incorrect');
-        q.querySelectorAll('input').forEach(i => { i.checked = false; });
-        q.querySelectorAll('.answer').forEach(a => {
-            a.classList.remove('selected', 'correct-answer', 'show-incorrect');
-        });
-        q.querySelectorAll('.grade-display').forEach(g => {
-            g.className = 'grade-display';
-            g.textContent = '';
-        });
-        q.querySelectorAll('.question_points_holder').forEach(p => {
-            p.classList.remove('correct-answer', 'incorrect-answer');
-        });
-        const textInput = q.querySelector('input[type="text"], input[type="number"]');
-        if (textInput) textInput.value = '';
-        const textarea = q.querySelector('textarea');
-        if (textarea) textarea.value = '';
+        q.querySelectorAll('input').forEach(function(i) { i.checked = false; });
+        q.querySelectorAll('.answer').forEach(function(a) { a.classList.remove('selected', 'correct-answer', 'show-incorrect'); });
+        q.querySelectorAll('.grade-display').forEach(function(g) { g.className = 'grade-display'; g.textContent = ''; });
+        q.querySelectorAll('.question_points_holder').forEach(function(p) { p.classList.remove('correct-answer', 'incorrect-answer'); });
+        var ti = q.querySelector('input[type="text"], input[type="number"]');
+        if (ti) ti.value = '';
+        var ta = q.querySelector('textarea');
+        if (ta) ta.value = '';
     });
-
-    const banner = document.getElementById('scoreBanner');
-    banner.className = 'score-banner';
-    banner.innerHTML = '';
-
-    const submitBtn = document.getElementById('submitBtn');
-    submitBtn.disabled = false;
-    submitBtn.textContent = 'Submit Quiz';
-
+    document.getElementById('scoreBanner').className = 'score-banner';
+    document.getElementById('scoreBanner').innerHTML = '';
+    var btn = document.getElementById('submitBtn');
+    btn.disabled = false;
+    btn.textContent = 'Submit Quiz';
     autofillFromPreviousAttempts();
 }
 
-window.retakeQuiz = retakeQuiz;
-
 // Export / Import
-window.exportAnswers = function () {
-    const attempts = getAttempts();
-    if (attempts.length === 0) { alert('No attempts to export.'); return; }
-    const blob = new Blob([JSON.stringify(attempts, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'canvashack-answers.json';
-    a.click();
+window.exportAnswers = function() {
+    var attempts = getAttempts();
+    if (!attempts.length) { alert('No attempts.'); return; }
+    var blob = new Blob([JSON.stringify(attempts, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'canvashack-answers.json'; a.click();
     URL.revokeObjectURL(url);
-    addLog('info', '\uD83D\uDCE4', 'Exported ' + attempts.length + ' attempt(s) to canvashack-answers.json');
 };
 
-window.importAnswers = function () {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = function () {
-        const file = input.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (e) {
+window.importAnswers = function() {
+    var input = document.createElement('input'); input.type = 'file'; input.accept = '.json';
+    input.onchange = function() {
+        var file = input.files[0]; if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function(e) {
             try {
-                const imported = JSON.parse(e.target.result);
-                if (!Array.isArray(imported)) throw new Error('Invalid format');
-                const existing = getAttempts();
-                const merged = [...existing, ...imported];
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-                addLog('info', '\uD83D\uDCE5', 'Imported ' + imported.length + ' attempt(s). Total: ' + merged.length);
+                var imported = JSON.parse(e.target.result);
+                if (!Array.isArray(imported)) throw new Error('Bad format');
+                var existing = getAttempts();
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(existing.concat(imported)));
+                addLog('info', '\uD83D\uDCE5', 'Imported ' + imported.length + ' attempt(s).');
                 autofillFromPreviousAttempts();
-            } catch (err) {
-                alert('Invalid file: ' + err.message);
-            }
+            } catch(err) { alert('Invalid: ' + err.message); }
         };
         reader.readAsText(file);
     };
@@ -432,3 +314,51 @@ window.importAnswers = function () {
 };
 
 autofillFromPreviousAttempts();
+
+// ═══ AUTO-TYPE TEST ═════════════════════════════════════════════════════
+// Call from console: testAutoType() or testAPI()
+
+window.testAutoType = function() {
+    var q = document.getElementById('question_1003');
+    if (!q) { alert('Q3 not found'); return; }
+    var input = q.querySelector('input[type="text"]');
+    if (!input) { alert('No input'); return; }
+    input.value = '';
+    input.focus();
+    input.style.borderColor = '#ff9800';
+    var answer = 'debugging';
+    var i = 0;
+    (function typeNext() {
+        if (i < answer.length) {
+            input.value += answer[i];
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            i++;
+            setTimeout(typeNext, 50);
+        } else {
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            input.style.borderColor = '#27ae60';
+            addLog('info', '\u2705', 'Auto-type test done! Typed "' + answer + '" into Q3.');
+        }
+    })();
+};
+
+window.testAPI = function() {
+    var key = ''; // Paste your OpenRouter key here for testing
+    addLog('info', '\uD83D\uDD0D', 'Testing API call...');
+    fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key, 'HTTP-Referer': location.href, 'X-Title': 'CanvasHack' },
+        body: JSON.stringify({
+            model: 'google/gemma-4-26b-a4b-it:free',
+            messages: [
+                { role: 'system', content: 'Give ONLY the answer letter.' },
+                { role: 'user', content: 'Which uses LIFO?\nA. Queue\nB. Stack\nC. Linked List\nD. Binary Tree\n\nGive ONLY the letter.' }
+            ],
+            max_tokens: 10, temperature: 0.1
+        })
+    }).then(function(r) { return r.json(); }).then(function(data) {
+        if (data.error) addLog('leaked', '\u26A0\uFE0F', 'API error: ' + (data.error.message || JSON.stringify(data.error)).slice(0, 200));
+        else if (data.choices && data.choices[0]) addLog('info', '\u2705', 'API replied: "' + data.choices[0].message.content.trim() + '" (model: ' + data.model + ')');
+        else addLog('leaked', '\u26A0\uFE0F', 'Unexpected: ' + JSON.stringify(data).slice(0, 200));
+    }).catch(function(err) { addLog('leaked', '\u26A0\uFE0F', 'Fetch error: ' + err.message); });
+};

@@ -14,7 +14,7 @@
 </head>
 
 <body>
-    <!-- ─── Top Bar ──────────────────────────────────────────────────────── -->
+    <!-- Top Bar -->
     <div class="top">
         <div class="top-icon left" id="updates_icon">
             <i class="fa-solid fa-bell icon"><span>Updates</span></i>
@@ -26,11 +26,9 @@
         </div>
     </div>
 
-    <!-- ─── PAGE 1: Main Dashboard ───────────────────────────────────────── -->
+    <!-- PAGE 1: Dashboard -->
     <div class="page one" id="p1">
-
         <div class="dashboard">
-            <!-- Status indicator -->
             <div class="status-row">
                 <span class="status-label"><i class="fa-solid fa-circle-check"></i> All Systems Active</span>
             </div>
@@ -49,9 +47,8 @@
                     </label>
                 </div>
                 <p class="fc-desc">
-                    Fetches your previous quiz submissions from the Canvas API, finds your highest-scoring
-                    answers, and auto-fills them when you hover over each question. Works with multiple choice,
-                    true/false, fill-in-the-blank, matching, numerical, and essay questions.
+                    Fetches previous quiz submissions from Canvas API and auto-fills your best answers on hover.
+                    Supports MC, TF, fill-in-the-blank, matching, numerical, and essay.
                 </p>
             </div>
 
@@ -69,10 +66,28 @@
                     </label>
                 </div>
                 <p class="fc-desc">
-                    Overrides browser visibility and focus APIs so Canvas always thinks your tab is active and
-                    focused. Blocks focus, blur, visibilitychange, mouseleave, pagehide, freeze/resume and
-                    other tracking events from firing. Also intercepts dispatchEvent to block programmatic
-                    tracking.
+                    Overrides visibility/focus APIs so Canvas always thinks your tab is active. Blocks blur, focus,
+                    visibilitychange, mouseleave, pagehide, paste, copy, and other tracking events.
+                </p>
+            </div>
+
+            <!-- Killswitch -->
+            <div class="feature-card" id="feat-killswitch">
+                <div class="fc-header">
+                    <div class="fc-icon" style="background:#c00"><i class="fa-solid fa-skull-crossbones"></i></div>
+                    <div class="fc-title">
+                        <h2>Killswitch</h2>
+                        <span class="fc-badge active" id="badge-ksw">Armed</span>
+                    </div>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="toggleKillswitch" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <p class="fc-desc">
+                    If the Privacy Guard is removed, bypassed, or the page tries to unpatch our overrides, instantly
+                    crashes the page with a fake "Aw, Snap! Out of Memory" error. Prevents Canvas from detecting you
+                    unprotected. Only active when Privacy Guard is on.
                 </p>
             </div>
 
@@ -90,9 +105,7 @@
                     </label>
                 </div>
                 <p class="fc-desc">
-                    Wraps the current page in an iframe with a fake Canvas Kiosk App top bar, making it look
-                    like you're running the locked-down kiosk browser. Activate on any quiz page using the
-                    kiosk toggle. Works independently of other features.
+                    Adds a fake Canvas Kiosk App top bar, making it look like you're running the locked-down browser.
                 </p>
             </div>
 
@@ -107,20 +120,16 @@
                     <i class="fa-solid fa-chevron-right fc-arrow"></i>
                 </div>
                 <p class="fc-desc">
-                    Connects to your own LLM API (OpenAI, Anthropic, Ollama, any OpenAI-compatible endpoint).
-                    Three modes: <b>Hover</b> highlights the correct answer, <b>Right-click</b> shows a
-                    floating answer box, <b>Keybind</b> auto-types the answer character by character.
-                    Click this card to set up.
+                    Connects to your own LLM API. Three modes: <b>Hover</b> highlights correct answer,
+                    <b>Right-click</b> auto-fills it, <b>Keybind</b> auto-types it. Click to set up.
                 </p>
             </div>
 
-            <!-- Test Extension button -->
             <button class="test-extension-btn" id="testExtensionBtn">
                 <i class="fa-solid fa-flask"></i>
                 Test Extension
             </button>
 
-            <!-- Status footer -->
             <div class="status-footer">
                 <div class="sf-item">
                     <i class="fa-solid fa-shield-check sf-icon"></i>
@@ -134,34 +143,29 @@
         </div>
     </div>
 
-    <!-- ─── PAGE 2: Settings ─────────────────────────────────────────────── -->
+    <!-- PAGE 2: Settings -->
     <div class="page two" id="p2" style="display:none;">
         <div class="page-type" id="settings_back">
             <i class="fa-solid fa-arrow-left"></i>
             <h6>Settings</h6>
         </div>
         <div class="settings">
-            <!-- URL Blocker -->
             <div class="url-blocker">
                 <div class="tooltip">
                     <h5>Block URLs from Injection</h5>
                     <i class="fas fa-info-circle info-icon"></i>
-                    <span class="tooltiptext">URLs added here will be skipped by CanvasHack. Do NOT include your
-                        school's Canvas URL. Separate with commas.</span>
+                    <span class="tooltiptext">URLs skipped by CanvasHack. Do NOT include your school's Canvas URL. Comma-separated.</span>
                 </div>
                 <div id="urlContainer"></div>
-                <input type="text" id="urlInput"
-                    placeholder="Enter URLs separated by commas (ex. https://google.com)">
+                <input type="text" id="urlInput" placeholder="Enter URLs separated by commas">
                 <button id="saveUrls">Save URLs</button>
             </div>
 
-            <!-- Show Injected UI Toggle -->
             <div class="feature-toggle">
                 <div class="tooltip">
                     <h5>Show In-Canvas Toolbar</h5>
                     <i class="fas fa-info-circle info-icon"></i>
-                    <span class="tooltiptext">Controls the small on-page toolbar injected on Canvas quiz pages.
-                        Your protection still runs in the background even if hidden.</span>
+                    <span class="tooltiptext">On-page toolbar on Canvas quiz pages. Protection still runs if hidden.</span>
                 </div>
                 <label class="toggle-switch">
                     <input type="checkbox" id="showInjectedUICheckbox" checked>
@@ -170,13 +174,12 @@
             </div>
 
             <div class="get-help">
-                <p>Questions or issues? <a href="https://discord.gg/CtpHA6XC2u"
-                        target="_blank">Join the Discord</a></p>
-            </div>
+                    <p>CanvasHack — Free and open source</p>
+                </div>
         </div>
     </div>
 
-    <!-- ─── PAGE 3: AI Settings ──────────────────────────────────────────── -->
+    <!-- PAGE 3: AI Settings -->
     <div class="page three" id="p3" style="display:none;">
         <div class="page-type" id="ai_back">
             <i class="fa-solid fa-arrow-left"></i>
@@ -184,7 +187,6 @@
         </div>
         <div class="settings ai-settings">
 
-            <!-- Provider selection -->
             <div class="ai-section">
                 <h5>Provider</h5>
                 <div class="provider-select-row">
@@ -207,17 +209,15 @@
                 </div>
             </div>
 
-            <!-- API Key (auto-detects provider from key format) -->
             <div class="ai-section">
                 <h5>API Key</h5>
-                <p class="setting-hint" id="keyHint">Paste your key — the provider will be auto-detected from its format. Leave blank for Ollama.</p>
+                <p class="setting-hint" id="keyHint">Paste your key — provider auto-detected. Leave blank for Ollama.</p>
                 <div class="api-key-row">
                     <input type="password" id="aiApiKeyInput" placeholder="Paste your API key here...">
                     <button id="toggleApiKeyVisibility" title="Show/Hide"><i class="fa-solid fa-eye"></i></button>
                 </div>
             </div>
 
-            <!-- Model selection (dropdown populated per-provider + custom input) -->
             <div class="ai-section">
                 <h5>Model</h5>
                 <div class="model-select-row" id="modelSelectRow">
@@ -228,15 +228,13 @@
                 <input type="text" id="customModelInput" placeholder="e.g. gpt-4o-mini" style="display:none;">
             </div>
 
-            <!-- Custom endpoint (only shown for custom provider) -->
             <div class="ai-section" id="customEndpointSection" style="display:none;">
                 <h5>Custom Endpoint URL</h5>
-                <p class="setting-hint">Must be an OpenAI-compatible chat completions endpoint.</p>
+                <p class="setting-hint">Must be OpenAI-compatible chat completions endpoint.</p>
                 <input type="text" id="aiEndpointInput"
                     placeholder="https://api.your-provider.com/v1/chat/completions">
             </div>
 
-            <!-- Answer Mode -->
             <div class="ai-section">
                 <h5>Answer Mode</h5>
                 <div class="mode-buttons">
@@ -248,33 +246,28 @@
                 <p class="mode-desc" id="modeDesc">AI answer system is disabled.</p>
             </div>
 
-            <!-- Keybind config -->
             <div class="ai-section" id="keybindSection" style="display:none;">
                 <h5>Auto-Type Keybind</h5>
-                <p class="setting-hint">Press any key to set it as the trigger. When hovering a question and
-                    pressing this key, the AI answer will be auto-typed into the input field character by
-                    character.</p>
+                <p class="setting-hint">Press any key to set it as the trigger.</p>
                 <div class="keybind-display">
                     <span id="currentKeybind">y</span>
                     <input type="text" id="keybindInput" maxlength="1" placeholder="Press a key">
                 </div>
             </div>
 
-            <!-- Auto-type speed -->
             <div class="ai-section" id="speedSection" style="display:none;">
                 <h5>Auto-Type Speed: <span id="speedValue">50</span>ms</h5>
-                <p class="setting-hint">Milliseconds between each character when auto-typing. Lower = faster.</p>
+                <p class="setting-hint">Lower = faster. Milliseconds between characters.</p>
                 <input type="range" id="typeSpeedRange" min="10" max="200" value="50" step="10">
             </div>
 
             <button id="testApiBtn" class="test-api-btn">Test Connection</button>
             <p id="apiTestResult"></p>
-
             <button id="saveAiBtn" class="save-btn">Save AI Settings</button>
         </div>
     </div>
 
-    <!-- ─── PAGE 4: Updates ──────────────────────────────────────────────── -->
+    <!-- PAGE 4: Updates -->
     <div class="page four" id="p4" style="display:none;">
         <div class="page-type" id="updates_back">
             <i class="fa-solid fa-arrow-left"></i>
@@ -286,9 +279,9 @@
                 <ul>
                     <li>Removed all remote server connections — 100% local</li>
                     <li>Added AI Answer Engine with hover, right-click, and auto-type modes</li>
-                    <li>Enhanced Privacy Guard: blocks mouseleave, freeze/resume, dispatchEvent</li>
+                    <li>Enhanced Privacy Guard: blocks mouseleave, paste, copy, freeze/resume, dispatchEvent</li>
+                    <li>Added Killswitch — crashes page if guard is removed</li>
                     <li>Added on/off toggles for every feature</li>
-                    <li>Cleaned up and simplified the entire codebase</li>
                     <li>Removed paywall — all features free and open source</li>
                 </ul>
             </div>

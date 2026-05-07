@@ -78,9 +78,16 @@
       });
 
       if (!res.ok) {
-        const t = await res.text();
-        console.error('[CH AI] API error:', t);
-        return { answer: 'API Error: ' + res.status, raw: t };
+        const errText = await res.text();
+        let errMsg;
+        try { const ej = JSON.parse(errText); errMsg = ej.error?.message || ej.message || errText; }
+        catch { errMsg = errText; }
+        const suggestion = res.status === 401 ? 'Check your API key.' :
+                          res.status === 404 ? 'Model "' + config.model + '" not found — it may have been removed.' :
+                          res.status === 429 ? 'Rate limited — wait and retry.' :
+                          res.status === 402 ? 'This model needs credits.' : '';
+        console.error('[CH AI] API error:', res.status, errMsg);
+        return { answer: 'API Error ' + res.status + ': ' + errMsg.slice(0, 200) + ' ' + suggestion, raw: errText };
       }
 
       const data = await res.json();

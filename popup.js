@@ -34,8 +34,8 @@ const PROVIDERS = {
     name: 'OpenRouter', endpoint: 'https://openrouter.ai/api/v1/chat/completions',
     keyPrefixes: ['sk-or-'], keyHint: 'Starts with sk-or-',
     models: [
+      { id: 'google/gemma-4-26b-a4b-it:free', name: 'Gemma 4 26B (Free) \u2605' },
       { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B (Free)' },
-      { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B (Free)' },
       { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B (Free)' },
       { id: 'qwen/qwen3-coder:free', name: 'Qwen3 Coder 480B (Free)' },
       { id: 'nousresearch/hermes-3-llama-3.1-405b:free', name: 'Hermes 3 405B (Free)' },
@@ -103,7 +103,10 @@ const MODE_DESCS = {
 
 const DEFAULTS = {
   answerSaver: true, privacyGuard: true, kioskSpoof: false, killswitch: true,
-  aiMode: 'off', aiProvider: '', aiApiKey: '', aiModel: '', aiEndpoint: '',
+  aiMode: 'off', aiProvider: 'openrouter',
+  aiApiKey: '',
+  aiModel: 'google/gemma-4-26b-a4b-it:free',
+  aiEndpoint: 'https://openrouter.ai/api/v1/chat/completions',
   aiKeybind: 'y', aiAutoTypeSpeed: 50, blockedUrls: [], showInjectedUI: true
 };
 
